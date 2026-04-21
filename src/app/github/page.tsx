@@ -339,6 +339,9 @@ function RepoDetailPanel({ repo, onClose }: { repo: RepoDetail; onClose: () => v
         <span className="flex items-center gap-1"><GitCommit size={11} /> <code className="text-cyan-400">{repo.default_branch}</code></span>
         <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(repo.pushed_at).toLocaleDateString()}</span>
         {repo.license && <span>📄 {repo.license.name}</span>}
+        <a href={repo.html_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-slate-400 hover:text-slate-200">
+          <ExternalLink size={11} /> GitHub
+        </a>
         {repo.homepage && (
           <a href={repo.homepage} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-cyan-500 hover:text-cyan-300">
             <Globe size={11} /> {repo.homepage.replace(/^https?:\/\//, '')}
