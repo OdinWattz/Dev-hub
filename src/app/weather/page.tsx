@@ -127,7 +127,7 @@ export default function WeatherPage() {
           <div className="relative flex-1">
             <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
             <input
-              className="input pl-10"
+              className="input !pl-10"
               placeholder="Search city…"
               value={city}
               onChange={e => setCity(e.target.value)}

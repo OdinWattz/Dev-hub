@@ -152,7 +152,7 @@ export default function GitHubPage() {
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
             <input
-              className="input pl-10"
+              className="input !pl-10"
               placeholder="GitHub username…"
               value={username}
               onChange={e => setUsername(e.target.value)}
