@@ -265,7 +265,7 @@ export default function APIExplorerPage() {
         {/* Presets */}
         <div className="lg:col-span-2">
           <p className="section-label mb-3">Quick Presets</p>
-          <div className="space-y-2">
+          <div className="space-y-2 overflow-y-auto max-h-[520px] pr-1">
             {PRESETS.map(p => (
               <button
                 key={p.label}
