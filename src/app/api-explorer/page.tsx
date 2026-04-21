@@ -134,9 +134,9 @@ export default function APIExplorerPage() {
 
   // Chat state
   const [tab, setTab] = useState<'explorer' | 'chat'>('explorer')
-  const [apiKey, setApiKey] = useState('')
+  const [apiKey, setApiKey] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('groq_api_key') ?? '' : '')
   const [showKey, setShowKey] = useState(false)
-  const [chatModel, setChatModel] = useState('llama3-8b-8192')
+  const [chatModel, setChatModel] = useState('llama-3.3-70b-versatile')
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -314,8 +314,8 @@ export default function APIExplorerPage() {
           {/* Config */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-slate-300 flex items-center gap-2"><Key size={13} className="text-cyan-400" /> Groq API Config</p>
-              <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-500 hover:text-cyan-300">Gratis key ophalen →</a>
+              <p className="text-sm font-semibold text-slate-300 flex items-center gap-2"><Key size={13} className="text-cyan-400" /> Groq API Key</p>
+              <a href="/settings" className="text-xs text-cyan-500 hover:text-cyan-300">⚙️ Beheer in Settings →</a>
             </div>
             <div className="flex gap-2 mb-2">
               <div className="relative flex-1">
@@ -335,9 +335,11 @@ export default function APIExplorerPage() {
                 value={chatModel}
                 onChange={e => setChatModel(e.target.value)}
               >
-                <option value="llama3-8b-8192">Llama 3 8B</option>
-                <option value="llama3-70b-8192">Llama 3 70B</option>
-                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+                <option value="llama-3.1-8b-instant">Llama 3.1 8B (snel)</option>
+                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B</option>
+                <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
+                <option value="qwen-qwq-32b">Qwen QwQ 32B</option>
                 <option value="gemma2-9b-it">Gemma 2 9B</option>
               </select>
             </div>

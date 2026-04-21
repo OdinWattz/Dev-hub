@@ -12,6 +12,7 @@ import {
   CloudSun,
   Cpu,
   ExternalLink,
+  Settings,
 } from 'lucide-react'
 
 const NAV = [
@@ -22,6 +23,7 @@ const NAV = [
   { href: '/weather',       label: 'Weather',      icon: CloudSun,        color: 'text-sky-400' },
   { href: '/github',        label: 'GitHub Stats', icon: Github,          color: 'text-slate-300' },
   { href: '/api-explorer',  label: 'API Explorer', icon: Globe,           color: 'text-orange-400' },
+  { href: '/settings',       label: 'Settings',     icon: Settings,        color: 'text-slate-400' },
 ]
 
 export default function Sidebar() {
