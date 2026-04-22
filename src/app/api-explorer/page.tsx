@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, RotateCcw, Copy, Zap, MessageSquare, Key, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, RotateCcw, Copy, Zap, MessageSquare, Key, ChevronDown, ChevronUp, History, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Preset = { label: string; url: string; desc: string; emoji: string }
@@ -125,12 +125,20 @@ const PRESETS: Preset[] = [
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
+type HistoryEntry = { url: string; status: number; time: number; size: number; ts: number }
+
 export default function APIExplorerPage() {
   const [url, setUrl] = useState('')
   const [response, setResponse] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<number | null>(null)
   const [time, setTime] = useState<number | null>(null)
+  const [responseSize, setResponseSize] = useState<number | null>(null)
+  const [history, setHistory] = useState<HistoryEntry[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem('api_history') ?? '[]') } catch { return [] }
+  })
+  const [showHistory, setShowHistory] = useState(false)
 
   // Chat state
   const [tab, setTab] = useState<'explorer' | 'chat'>('explorer')
@@ -157,16 +165,25 @@ export default function APIExplorerPage() {
     try {
       const res = await fetch(endpoint)
       const t1 = performance.now()
-      setTime(Math.round(t1 - t0))
+      const elapsed = Math.round(t1 - t0)
+      setTime(elapsed)
       setStatus(res.status)
       const text = await res.text()
-      try {
-        setResponse(JSON.stringify(JSON.parse(text), null, 2))
-      } catch {
-        setResponse(text)
-      }
+      setResponseSize(new TextEncoder().encode(text).length)
+      let formatted: string
+      try { formatted = JSON.stringify(JSON.parse(text), null, 2) }
+      catch { formatted = text }
+      setResponse(formatted)
+      // save to history
+      const entry: HistoryEntry = { url: endpoint, status: res.status, time: elapsed, size: new TextEncoder().encode(text).length, ts: Date.now() }
+      setHistory(prev => {
+        const next = [entry, ...prev.filter(h => h.url !== endpoint)].slice(0, 20)
+        localStorage.setItem('api_history', JSON.stringify(next))
+        return next
+      })
     } catch (err) {
       setStatus(0)
+      setResponseSize(null)
       setResponse(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
@@ -246,7 +263,36 @@ export default function APIExplorerPage() {
             )}
             Send
           </button>
+          <button
+            onClick={() => setShowHistory(v => !v)}
+            className={`btn-ghost px-2.5 ${showHistory ? 'text-cyan-400' : ''}`}
+            title="Request history"
+          >
+            <History size={14} />
+          </button>
         </div>
+
+        {/* History panel */}
+        {showHistory && history.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-700/40">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Recent ({history.length})</p>
+              <button onClick={() => { setHistory([]); localStorage.removeItem('api_history') }} className="text-[10px] text-slate-700 hover:text-red-400 flex items-center gap-1">
+                <X size={10} /> Clear
+              </button>
+            </div>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {history.map((h, i) => (
+                <button key={i} onClick={() => { setUrl(h.url); call(h.url) }}
+                  className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded hover:bg-slate-800/60 transition-colors group">
+                  <span className={`text-[10px] font-mono shrink-0 ${h.status >= 200 && h.status < 300 ? 'text-green-400' : 'text-red-400'}`}>{h.status}</span>
+                  <span className="text-xs text-slate-400 truncate flex-1">{h.url}</span>
+                  <span className="text-[10px] text-slate-700 shrink-0">{h.time}ms</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Status bar */}
         {status !== null && (
@@ -259,6 +305,11 @@ export default function APIExplorerPage() {
               {status === 0 ? 'NETWORK ERROR' : `${status}`}
             </span>
             {time !== null && <span className="text-slate-500">{time}ms</span>}
+            {responseSize !== null && (
+              <span className="text-slate-600">
+                {responseSize < 1024 ? `${responseSize} B` : `${(responseSize / 1024).toFixed(1)} KB`}
+              </span>
+            )}
             {response && (
               <button onClick={copy} className="ml-auto btn-ghost py-0.5 px-2">
                 <Copy size={11} /> Copy

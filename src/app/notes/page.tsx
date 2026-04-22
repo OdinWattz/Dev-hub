@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit3, Save, X, Search, FileText } from 'lucide-react'
+import { Plus, Trash2, Edit3, Save, X, Search, FileText, Star, Copy, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Note = {
@@ -11,6 +11,7 @@ type Note = {
   category: string
   color: string
   updatedAt: number
+  pinned?: boolean
 }
 
 const COLORS = [
@@ -29,6 +30,7 @@ export default function NotesPage() {
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ title: '', content: '', category: 'general', color: 'cyan' })
+  const [filterCat, setFilterCat] = useState('all')
 
   useEffect(() => {
     const saved = localStorage.getItem('devhub-notes')
@@ -59,11 +61,29 @@ export default function NotesPage() {
     toast('Note removed', { icon: '🗑️' })
   }
 
-  const filtered = notes.filter(n =>
-    n.title.toLowerCase().includes(search.toLowerCase()) ||
-    n.content.toLowerCase().includes(search.toLowerCase()) ||
-    n.category.toLowerCase().includes(search.toLowerCase())
-  )
+  const togglePin = (id: string) => {
+    persist(notes.map(n => n.id === id ? { ...n, pinned: !n.pinned } : n))
+  }
+
+  const copyNote = (note: Note) => {
+    navigator.clipboard.writeText(`# ${note.title}\n\n${note.content}`)
+    toast.success('Copied to clipboard!')
+  }
+
+  const filtered = notes
+    .filter(n =>
+      (filterCat === 'all' || n.category === filterCat) &&
+      (n.title.toLowerCase().includes(search.toLowerCase()) ||
+       n.content.toLowerCase().includes(search.toLowerCase()) ||
+       n.category.toLowerCase().includes(search.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1
+      if (!a.pinned && b.pinned) return 1
+      return b.updatedAt - a.updatedAt
+    })
+
+  const wordCount = (text: string) => text.trim() ? text.trim().split(/\s+/).length : 0
 
   return (
     <div className="max-w-5xl">
@@ -73,7 +93,7 @@ export default function NotesPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-3">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
@@ -86,6 +106,16 @@ export default function NotesPage() {
         <button onClick={() => setCreating(!creating)} className="btn-primary">
           <Plus size={14} /> New Note
         </button>
+      </div>
+      <div className="flex items-center gap-2 mb-6">
+        <div className="relative">
+          <select className="input text-xs appearance-none pr-6 cursor-pointer" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+            <option value="all">All categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+        </div>
+        <span className="text-[10px] text-slate-600">{filtered.length} note{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
       {/* Create form */}
@@ -143,24 +173,33 @@ export default function NotesPage() {
           const color = COLORS.find(c => c.name === note.color) ?? COLORS[0]
           const isEditing = editing === note.id
           return (
-            <div key={note.id} className={`card ${color.bg} ${color.border} flex flex-col`}>
+            <div key={note.id} className={`card ${color.bg} ${color.border} flex flex-col group ${note.pinned ? 'ring-1 ring-yellow-500/20' : ''}`}>
               {isEditing ? (
                 <EditNote note={note} onSave={(patch) => { update(note.id, patch); setEditing(null) }} onCancel={() => setEditing(null)} />
               ) : (
                 <>
                   <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold text-white text-sm">{note.title}</h3>
-                      <span className="tag bg-slate-700/50 text-slate-400 border border-slate-700 mt-1 text-[10px]">
-                        {note.category}
-                      </span>
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      {note.pinned && <Star size={10} className="text-yellow-400 fill-yellow-400 mt-0.5 shrink-0" />}
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-white text-sm">{note.title}</h3>
+                        <span className="tag bg-slate-700/50 text-slate-400 border border-slate-700 mt-1 text-[10px]">
+                          {note.category}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex gap-1 opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100">
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
+                      <button onClick={() => togglePin(note.id)} className={`btn-ghost py-0.5 px-1.5 ${note.pinned ? 'text-yellow-400' : ''}`} title={note.pinned ? 'Unpin' : 'Pin'}>
+                        <Star size={10} className={note.pinned ? 'fill-yellow-400' : ''} />
+                      </button>
+                      <button onClick={() => copyNote(note)} className="btn-ghost py-0.5 px-1.5" title="Copy">
+                        <Copy size={10} />
+                      </button>
                       <button onClick={() => setEditing(note.id)} className="btn-ghost py-0.5 px-1.5">
-                        <Edit3 size={11} />
+                        <Edit3 size={10} />
                       </button>
                       <button onClick={() => remove(note.id)} className="text-slate-700 hover:text-red-400 transition-colors p-1">
-                        <Trash2 size={11} />
+                        <Trash2 size={10} />
                       </button>
                     </div>
                   </div>
@@ -169,11 +208,9 @@ export default function NotesPage() {
                   </pre>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
                     <span className="text-[10px] text-slate-600">
-                      {new Date(note.updatedAt).toLocaleString()}
+                      {wordCount(note.content)}w · {note.content.length}c
                     </span>
-                    <button onClick={() => setEditing(note.id)} className="text-[10px] text-slate-600 hover:text-cyan-400 transition-colors">
-                      Edit →
-                    </button>
+                    <span className="text-[10px] text-slate-600">{new Date(note.updatedAt).toLocaleString()}</span>
                   </div>
                 </>
               )}

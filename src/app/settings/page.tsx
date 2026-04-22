@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Save, Eye, EyeOff, Trash2, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Save, Eye, EyeOff, Trash2, CheckCircle, Download, Upload, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Setting = {
@@ -36,6 +36,8 @@ export default function SettingsPage() {
   const [values, setValues] = useState<Record<string, string>>({})
   const [show, setShow] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  const [confirmClear, setConfirmClear] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const loaded: Record<string, string> = {}
@@ -61,6 +63,56 @@ export default function SettingsPage() {
     localStorage.removeItem(key)
     setValues(prev => ({ ...prev, [key]: '' }))
     toast.success('Verwijderd')
+  }
+
+  const DATA_KEYS = ['devhub-snippets', 'devhub-notes', 'devhub-todos', 'chat_messages']
+
+  const exportAll = () => {
+    const data: Record<string, unknown> = {}
+    for (const s of SETTINGS) {
+      const v = localStorage.getItem(s.key)
+      if (v) data[s.key] = v
+    }
+    for (const k of DATA_KEYS) {
+      const v = localStorage.getItem(k)
+      if (v) { try { data[k] = JSON.parse(v) } catch { data[k] = v } }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `devhub-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Backup gedownload!')
+  }
+
+  const importAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string) as Record<string, unknown>
+        for (const [k, v] of Object.entries(data)) {
+          localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v))
+        }
+        const loaded: Record<string, string> = {}
+        for (const s of SETTINGS) { loaded[s.key] = localStorage.getItem(s.key) ?? '' }
+        setValues(loaded)
+        toast.success('Backup hersteld! Herlaad de pagina om alles te zien.')
+      } catch { toast.error('Ongeldig backup bestand') }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const clearAllData = () => {
+    for (const k of DATA_KEYS) localStorage.removeItem(k)
+    for (const s of SETTINGS) localStorage.removeItem(s.key)
+    setValues({})
+    setConfirmClear(false)
+    toast.success('Alle data gewist')
   }
 
   return (
@@ -133,6 +185,40 @@ export default function SettingsPage() {
             🔒 Keys worden uitsluitend opgeslagen in <code className="text-slate-500">localStorage</code> van je browser.
             Ze verlaten je apparaat alleen wanneer jij een API call maakt — direct naar de betreffende service.
           </p>
+        </div>
+
+        {/* Backup / Restore */}
+        <div className="card space-y-3">
+          <p className="text-sm font-semibold text-slate-200">Backup &amp; Restore</p>
+          <p className="text-xs text-slate-500">Exporteer al je snippets, notities, taken en instellingen naar één JSON bestand. Ideaal voor back-up of overzetten naar een andere browser.</p>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={exportAll} className="btn-primary gap-1.5">
+              <Download size={13} /> Exporteer alles
+            </button>
+            <button onClick={() => importRef.current?.click()} className="btn-ghost gap-1.5">
+              <Upload size={13} /> Importeer backup
+            </button>
+            <input ref={importRef} type="file" accept=".json" className="hidden" onChange={importAll} />
+          </div>
+        </div>
+
+        {/* Danger zone */}
+        <div className="card border-red-500/20 space-y-3">
+          <p className="text-sm font-semibold text-red-400 flex items-center gap-2">
+            <AlertTriangle size={14} /> Danger Zone
+          </p>
+          <p className="text-xs text-slate-500">Wis alle opgeslagen data uit deze app (snippets, notities, taken, chat, API keys). Dit kan niet ongedaan gemaakt worden.</p>
+          {!confirmClear ? (
+            <button onClick={() => setConfirmClear(true)} className="btn-ghost text-red-400 border-red-500/20 hover:bg-red-500/10 text-xs gap-1.5">
+              <Trash2 size={12} /> Wis alle data
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-red-400">Weet je het zeker?</span>
+              <button onClick={clearAllData} className="btn-ghost text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs">Ja, wis alles</button>
+              <button onClick={() => setConfirmClear(false)} className="btn-ghost text-xs">Annuleer</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
