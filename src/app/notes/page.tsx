@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit3, Save, X, Search, FileText, Star, Copy, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, Edit3, Save, X, Search, FileText, Star, Copy, ChevronDown, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type Note = {
@@ -31,6 +31,28 @@ export default function NotesPage() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ title: '', content: '', category: 'general', color: 'cyan' })
   const [filterCat, setFilterCat] = useState('all')
+  const [mdPreviews, setMdPreviews] = useState<Set<string>>(new Set())
+
+  const toggleMdPreview = (id: string) =>
+    setMdPreviews(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+
+  const renderMd = (text: string): string => {
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return esc(text)
+      .replace(/^#{4}\s(.+)$/gm, '<h4 class="text-slate-200 font-semibold text-sm mt-2">$1</h4>')
+      .replace(/^#{3}\s(.+)$/gm, '<h3 class="text-slate-100 font-semibold text-sm mt-2">$1</h3>')
+      .replace(/^#{2}\s(.+)$/gm, '<h2 class="text-slate-100 font-semibold mt-2">$1</h2>')
+      .replace(/^#\s(.+)$/gm, '<h1 class="text-white font-bold mt-2">$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-200">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>')
+      .replace(/~~(.+?)~~/g, '<del class="text-slate-500">$1</del>')
+      .replace(/`([^`]+)`/g, '<code class="bg-slate-800 px-1 py-0.5 rounded text-cyan-300 text-[11px] font-mono">$1</code>')
+      .replace(/^-\s(.+)$/gm, '<li class="ml-3 text-slate-400 list-disc">$1</li>')
+      .replace(/^\d+\.\s(.+)$/gm, '<li class="ml-3 text-slate-400 list-decimal">$1</li>')
+      .replace(/^&gt;\s(.+)$/gm, '<blockquote class="border-l-2 border-slate-600 pl-3 text-slate-500 italic">$1</blockquote>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-cyan-400 underline" target="_blank">$1</a>')
+      .replace(/\n/g, '<br>')
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('devhub-notes')
@@ -192,6 +214,9 @@ export default function NotesPage() {
                       <button onClick={() => togglePin(note.id)} className={`btn-ghost py-0.5 px-1.5 ${note.pinned ? 'text-yellow-400' : ''}`} title={note.pinned ? 'Unpin' : 'Pin'}>
                         <Star size={10} className={note.pinned ? 'fill-yellow-400' : ''} />
                       </button>
+                      <button onClick={() => toggleMdPreview(note.id)} className={`btn-ghost py-0.5 px-1.5 ${mdPreviews.has(note.id) ? 'text-cyan-400' : ''}`} title="Toggle markdown preview">
+                        <BookOpen size={10} />
+                      </button>
                       <button onClick={() => copyNote(note)} className="btn-ghost py-0.5 px-1.5" title="Copy">
                         <Copy size={10} />
                       </button>
@@ -203,9 +228,16 @@ export default function NotesPage() {
                       </button>
                     </div>
                   </div>
-                  <pre className="text-xs text-slate-400 whitespace-pre-wrap break-words flex-1 font-mono leading-relaxed">
-                    {note.content || <span className="text-slate-700 italic">Empty note</span>}
-                  </pre>
+                  {mdPreviews.has(note.id) ? (
+                    <div
+                      className="text-xs text-slate-400 flex-1 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderMd(note.content) || '<span class="text-slate-700 italic">Empty note</span>' }}
+                    />
+                  ) : (
+                    <pre className="text-xs text-slate-400 whitespace-pre-wrap break-words flex-1 font-mono leading-relaxed">
+                      {note.content || <span className="text-slate-700 italic">Empty note</span>}
+                    </pre>
+                  )}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
                     <span className="text-[10px] text-slate-600">
                       {wordCount(note.content)}w · {note.content.length}c

@@ -10,6 +10,8 @@ import {
   Globe,
   Github,
   CloudSun,
+  Timer,
+  Heart,
   Cpu,
   ExternalLink,
   Settings,
@@ -20,7 +22,9 @@ const NAV = [
   { href: '/todo',          label: 'Todo',         icon: CheckSquare,     color: 'text-green-400' },
   { href: '/snippets',      label: 'Snippets',     icon: Code2,           color: 'text-purple-400' },
   { href: '/notes',         label: 'Notes',        icon: FileText,        color: 'text-yellow-400' },
-  { href: '/weather',       label: 'Weather',      icon: CloudSun,        color: 'text-sky-400' },
+  { href: '/focus',         label: 'Focus Timer',   icon: Timer,           color: 'text-red-400' },
+  { href: '/habits',         label: 'Habit Tracker',  icon: Heart,           color: 'text-rose-400' },
+  { href: '/weather',        label: 'Weather',        icon: CloudSun,        color: 'text-sky-400' },
   { href: '/github',        label: 'GitHub Stats', icon: Github,          color: 'text-slate-300' },
   { href: '/api-explorer',  label: 'API Explorer', icon: Globe,           color: 'text-orange-400' },
   { href: '/settings',       label: 'Settings',     icon: Settings,        color: 'text-slate-400' },
@@ -81,7 +85,7 @@ export default function Sidebar() {
           className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
         >
           <ExternalLink size={11} />
-          Open on GitHub
+          Open GitHub
         </a>
       </div>
     </aside>

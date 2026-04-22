@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Wind, Droplets, Eye, Thermometer, RotateCcw, MapPin } from 'lucide-react'
+import { Search, Wind, Droplets, Eye, RotateCcw, MapPin, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type WeatherData = {
@@ -63,6 +63,10 @@ export default function WeatherPage() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(false)
   const [geoResults, setGeoResults] = useState<GeoResult[]>([])
+  const [savedCities, setSavedCities] = useState<GeoResult[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem('weather_saved') ?? '[]') } catch { return [] }
+  })
 
   const fetchWeather = async (lat: number, lon: number) => {
     setLoading(true)
@@ -104,6 +108,21 @@ export default function WeatherPage() {
     setCity(geo.name)
     fetchWeather(geo.latitude, geo.longitude)
   }
+
+  const toggleSave = (geo: GeoResult) => {
+    setSavedCities(prev => {
+      const exists = prev.some(c => c.name === geo.name && c.country === geo.country)
+      const next = exists
+        ? prev.filter(c => !(c.name === geo.name && c.country === geo.country))
+        : [...prev, geo].slice(0, 8)
+      localStorage.setItem('weather_saved', JSON.stringify(next))
+      toast(exists ? 'Removed from favourites' : '⭐ Added to favourites')
+      return next
+    })
+  }
+
+  const isSaved = (geo: GeoResult | null) =>
+    geo ? savedCities.some(c => c.name === geo.name && c.country === geo.country) : false
 
   // Auto-load with Beilen as default
   useEffect(() => {
@@ -154,6 +173,27 @@ export default function WeatherPage() {
         )}
       </div>
 
+      {/* Saved cities */}
+      {savedCities.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {savedCities.map(c => (
+            <button
+              key={`${c.name}-${c.country}`}
+              onClick={() => selectCity(c)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border transition-all
+                ${location?.name === c.name && location?.country === c.country
+                  ? 'bg-sky-500/20 border-sky-500/40 text-sky-300'
+                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                }`}
+            >
+              <Star size={9} className="fill-yellow-400 text-yellow-400" />
+              {c.name}
+              <span className="text-slate-600">{c.country}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading && (
         <div className="card flex items-center justify-center py-16 text-slate-600">
           <RotateCcw size={20} className="animate-spin mr-2" /> Fetching weather…
@@ -167,6 +207,13 @@ export default function WeatherPage() {
             <div className="flex items-center gap-2 mb-4">
               <MapPin size={13} className="text-sky-400" />
               <span className="text-sm text-slate-300">{location.name}, {location.country}</span>
+              <button
+                onClick={() => toggleSave(location)}
+                className="ml-auto btn-ghost px-2 py-1"
+                title={isSaved(location) ? 'Remove from favourites' : 'Save city'}
+              >
+                <Star size={13} className={isSaved(location) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-600'} />
+              </button>
             </div>
             <div className="flex items-center justify-between">
               <div>

@@ -200,7 +200,7 @@ export default function SnippetsPage() {
     e.target.value = ''
   }
 
-  const usedLangs = [...new Set(snippets.map(s => s.language))].sort()
+  const usedLangs = Array.from(new Set(snippets.map(s => s.language))).sort()
 
   const filtered = snippets
     .filter(s =>
