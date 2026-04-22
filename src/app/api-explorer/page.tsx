@@ -176,7 +176,7 @@ function extractMedia(raw: string): { images: string[]; videos: string[]; audios
     walk(JSON.parse(raw))
   } catch { /* plain text */ }
 
-  return { images: [...new Set(images)], videos: [...new Set(videos)], audios: [...new Set(audios)] }
+  return { images: Array.from(new Set(images)), videos: Array.from(new Set(videos)), audios: Array.from(new Set(audios)) }
 }
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
