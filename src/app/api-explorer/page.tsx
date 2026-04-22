@@ -99,8 +99,8 @@ const PRESETS: Preset[] = [
   },
   {
     label: 'Bitcoin Price',
-    url: 'https://api.coindesk.com/v1/bpi/currentprice.json',
-    desc: 'CoinDesk — live BTC/USD price',
+    url: 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd,eur',
+    desc: 'CoinGecko — live BTC & ETH price in USD and EUR',
     emoji: '₿',
   },
   {
@@ -108,6 +108,26 @@ const PRESETS: Preset[] = [
     url: () => `https://openlibrary.org/search.json?q=subject:fiction&limit=1&offset=${Math.floor(Math.random() * 5000)}&fields=title,author_name,first_publish_year,subject`,
     desc: 'Open Library — random fiction book (different every click)',
     emoji: '📚',
+  },
+  {
+    label: 'Random Song',
+    url: () => {
+      const genres = ['pop','rock','jazz','classical','electronic','hiphop','soul','indie','metal','blues','country','funk']
+      const g = genres[Math.floor(Math.random() * genres.length)]
+      return `https://itunes.apple.com/search?term=${g}&media=music&entity=song&limit=1&explicit=no`
+    },
+    desc: 'iTunes API — random song with artwork & 30s audio preview',
+    emoji: '🎵',
+  },
+  {
+    label: 'Random Video',
+    url: () => {
+      const tags = ['nature','travel','art','music','sport','city','food','animals','technology','timelapse']
+      const t = tags[Math.floor(Math.random() * tags.length)]
+      return `https://api.dailymotion.com/videos?limit=1&sort=random&search=${t}&fields=title,embed_url,thumbnail_url,description&is_created_by_partner=true`
+    },
+    desc: 'Dailymotion — random embeddable video',
+    emoji: '🎬',
   },
   {
     label: 'Random Fox',
@@ -122,6 +142,42 @@ const PRESETS: Preset[] = [
     emoji: '🇳🇱',
   },
 ]
+
+// ── Rich response helpers ─────────────────────────────────────────────────────
+function extractMedia(raw: string): { images: string[]; videos: string[]; audios: string[] } {
+  const images: string[] = []
+  const videos: string[] = []
+  const audios: string[] = []
+  const imageExts = /\.(jpg|jpeg|png|gif|webp|svg)(\?[^"\s]*)?$/i
+  const audioExts = /\.(m4a|mp3|aac|ogg|m4p)(\?[^"\s]*)?$/i
+  const ytRx = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/
+  const vimeoRx = /vimeo\.com\/(\d+)/
+  const dmRx = /dailymotion\.com\/(?:embed\/video\/|video\/)?([a-z0-9]+)/i
+
+  try {
+    const walk = (v: unknown) => {
+      if (typeof v === 'string') {
+        if (v.startsWith('http')) {
+          if (imageExts.test(v)) images.push(v)
+          if (audioExts.test(v)) audios.push(v)
+        }
+        const yt = v.match(ytRx)
+        if (yt) videos.push(`https://www.youtube.com/embed/${yt[1]}`)
+        const vimeo = v.match(vimeoRx)
+        if (vimeo) videos.push(`https://player.vimeo.com/video/${vimeo[1]}`)
+        const dm = v.match(dmRx)
+        if (dm) videos.push(`https://www.dailymotion.com/embed/video/${dm[1]}`)
+      } else if (Array.isArray(v)) {
+        v.forEach(walk)
+      } else if (v && typeof v === 'object') {
+        Object.values(v).forEach(walk)
+      }
+    }
+    walk(JSON.parse(raw))
+  } catch { /* plain text */ }
+
+  return { images: [...new Set(images)], videos: [...new Set(videos)], audios: [...new Set(audios)] }
+}
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
@@ -352,9 +408,38 @@ export default function APIExplorerPage() {
                 <RotateCcw size={20} className="animate-spin mr-2" /> Calling API…
               </div>
             ) : response ? (
-              <pre className="text-green-300/90 whitespace-pre-wrap break-all leading-relaxed overflow-auto max-h-[600px]">
-                {response}
-              </pre>
+              <>
+                {/* Rich media preview */}
+                {(() => {
+                  const { images, videos, audios } = extractMedia(response)
+                  return (images.length > 0 || videos.length > 0 || audios.length > 0) ? (
+                    <div className="mb-4 space-y-3">
+                      {images.map((src, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={src} alt="API response media"
+                          className="max-w-full max-h-72 rounded-lg border border-slate-700/40 object-contain block"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                      ))}
+                      {audios.map((src, i) => (
+                        <div key={i} className="rounded-lg border border-slate-700/40 bg-slate-800/40 p-3">
+                          <p className="text-[10px] text-slate-500 mb-2">30s preview</p>
+                          <audio controls className="w-full h-8" src={src} />
+                        </div>
+                      ))}
+                      {videos.map((src, i) => (
+                        <iframe key={i} src={src} className="w-full rounded-lg border border-slate-700/40"
+                          style={{ height: '280px' }} allow="autoplay; encrypted-media" allowFullScreen
+                          title="API response video"
+                        />
+                      ))}
+                    </div>
+                  ) : null
+                })()}
+                <pre className="text-green-300/90 whitespace-pre-wrap break-all leading-relaxed overflow-auto max-h-[600px]">
+                  {response}
+                </pre>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center h-40 text-slate-700">
                 <Send size={24} className="mb-2 opacity-30" />
