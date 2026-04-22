@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Users, Star, GitFork, Code2, ExternalLink, RotateCcw, BookOpen, AlertCircle, X, GitCommit, Globe, Calendar, ChevronLeft } from 'lucide-react'
+import { Search, Users, Star, GitFork, Code2, ExternalLink, RotateCcw, BookOpen, AlertCircle, X, GitCommit, Globe, Calendar, ChevronLeft, Folder, FolderOpen, FileCode, FileText, FileImage, File, ChevronRight } from 'lucide-react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import toast from 'react-hot-toast'
 
 type GitHubUser = {
@@ -43,6 +45,16 @@ type RepoDetail = GitHubRepo & {
   languages: Record<string, number>
   commits: { sha: string; commit: { message: string; author: { name: string; date: string } } }[]
   contributors: { login: string; avatar_url: string; contributions: number }[]
+}
+
+type TreeItem = {
+  name: string
+  type: 'file' | 'dir'
+  path: string
+  size: number
+  sha: string
+  html_url: string
+  download_url: string | null
 }
 
 const LANG_COLORS: Record<string, string> = {
@@ -413,6 +425,218 @@ function RepoDetailPanel({ repo, onClose }: { repo: RepoDetail; onClose: () => v
           </div>
         </div>
       )}
+
+      {/* File Browser */}
+      <FileBrowser fullName={repo.full_name} defaultBranch={repo.default_branch} />
     </div>
   )
+}
+
+function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBranch: string }) {
+  const [pathStack, setPathStack]   = useState<string[]>([])
+  const [items, setItems]           = useState<TreeItem[] | null>(null)
+  const [treeLoading, setTreeLoading] = useState(false)
+  const [openFile, setOpenFile]     = useState<{ name: string; content: string; lang: string; url: string } | null>(null)
+  const [fileLoading, setFileLoading] = useState(false)
+  const [expanded, setExpanded]     = useState(false)
+
+  const currentPath = pathStack.join('/')
+
+  const loadDir = useCallback(async (path: string) => {
+    setTreeLoading(true)
+    setOpenFile(null)
+    try {
+      const url = `https://api.github.com/repos/${fullName}/contents/${path}`
+      const res = await fetch(url)
+      if (!res.ok) { toast.error('Could not load directory'); return }
+      const data: TreeItem[] = await res.json()
+      const sorted = [...data].sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
+      setItems(sorted)
+    } catch {
+      toast.error('Failed to fetch file tree')
+    } finally {
+      setTreeLoading(false)
+    }
+  }, [fullName])
+
+  const loadFile = useCallback(async (item: TreeItem) => {
+    setFileLoading(true)
+    try {
+      const res = await fetch(`https://api.github.com/repos/${fullName}/contents/${item.path}`)
+      if (!res.ok) { toast.error('Could not load file'); setFileLoading(false); return }
+      const data = await res.json()
+      if (data.encoding === 'base64' && data.content) {
+        const raw = atob(data.content.replace(/\n/g, ''))
+        const ext = item.name.split('.').pop()?.toLowerCase() ?? ''
+        const lang = EXT_LANG[ext] ?? ext
+        setOpenFile({ name: item.name, content: raw, lang, url: item.html_url })
+      } else {
+        // Too large or binary — open on GitHub
+        window.open(item.html_url, '_blank')
+      }
+    } catch {
+      toast.error('Failed to load file')
+    } finally {
+      setFileLoading(false)
+    }
+  }, [fullName])
+
+  const openDir = (item: TreeItem) => {
+    const newStack = [...pathStack, item.name]
+    setPathStack(newStack)
+    loadDir(newStack.join('/'))
+  }
+
+  const goTo = (idx: number) => {
+    const newStack = pathStack.slice(0, idx)
+    setPathStack(newStack)
+    loadDir(newStack.join('/'))
+    setOpenFile(null)
+  }
+
+  const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','svg','ico'])
+  const isImage = (name: string) => IMAGE_EXTS.has(name.split('.').pop()?.toLowerCase() ?? '')
+
+  const fileIcon = (item: TreeItem) => {
+    if (item.type === 'dir') return <Folder size={13} className="text-sky-400 shrink-0" />
+    const ext = item.name.split('.').pop()?.toLowerCase() ?? ''
+    if (IMAGE_EXTS.has(ext))                return <FileImage size={13} className="text-purple-400 shrink-0" />
+    if (['ts','tsx','js','jsx','py','go','rs','rb','java','cs','cpp','c','php'].includes(ext))
+      return <FileCode size={13} className="text-cyan-400 shrink-0" />
+    if (['md','txt','json','yml','yaml','toml','xml','html','css'].includes(ext))
+      return <FileText size={13} className="text-green-400 shrink-0" />
+    return <File size={13} className="text-slate-500 shrink-0" />
+  }
+
+  const humanSize = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`
+
+  if (!expanded) {
+    return (
+      <div>
+        <button
+          onClick={() => { setExpanded(true); loadDir('') }}
+          className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-200 transition-colors group"
+        >
+          <FolderOpen size={13} className="text-sky-400" />
+          <span className="section-label group-hover:text-slate-200 transition-colors">Browse Files</span>
+          <ChevronRight size={11} className="text-slate-700" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <FolderOpen size={13} className="text-sky-400 shrink-0" />
+          <p className="section-label">Files</p>
+          <span className="text-[10px] text-slate-700">·</span>
+          {/* Breadcrumbs */}
+          <button onClick={() => goTo(0)} className="text-[11px] text-slate-400 hover:text-cyan-400 transition-colors font-mono">
+            {fullName.split('/')[1]}
+          </button>
+          {pathStack.map((seg, i) => (
+            <span key={i} className="flex items-center gap-1">
+              <ChevronRight size={9} className="text-slate-700" />
+              <button
+                onClick={() => goTo(i + 1)}
+                className={`text-[11px] font-mono transition-colors
+                  ${i === pathStack.length - 1 ? 'text-white' : 'text-slate-400 hover:text-cyan-400'}`}
+              >
+                {seg}
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-700">{defaultBranch}</span>
+          {openFile && (
+            <button onClick={() => setOpenFile(null)} className="btn-ghost py-0.5 px-1.5 text-xs">← back</button>
+          )}
+          <button onClick={() => setExpanded(false)} className="text-slate-700 hover:text-slate-400"><X size={12} /></button>
+        </div>
+      </div>
+
+      {/* File viewer */}
+      {openFile ? (
+        <div className="rounded-lg border border-slate-700/40 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/60 border-b border-slate-700/40">
+            <span className="text-xs font-mono text-slate-300">{openFile.name}</span>
+            <a href={openFile.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-600 hover:text-slate-300 flex items-center gap-1">
+              <ExternalLink size={10} /> GitHub
+            </a>
+          </div>
+          {isImage(openFile.name) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`data:image/*;base64,${btoa(openFile.content)}`} alt={openFile.name} className="max-w-full block mx-auto p-4" />
+          ) : (
+            <div className="max-h-[480px] overflow-auto text-[11px]">
+              <SyntaxHighlighter
+                language={openFile.lang || 'text'}
+                style={vscDarkPlus}
+                showLineNumbers
+                wrapLongLines={false}
+                customStyle={{ margin: 0, background: 'transparent', fontSize: '11px' }}
+              >
+                {openFile.content}
+              </SyntaxHighlighter>
+            </div>
+          )}
+        </div>
+      ) : treeLoading ? (
+        <div className="flex items-center gap-2 py-6 text-slate-600 text-xs">
+          <RotateCcw size={12} className="animate-spin" /> Loading…
+        </div>
+      ) : fileLoading ? (
+        <div className="flex items-center gap-2 py-6 text-slate-600 text-xs">
+          <RotateCcw size={12} className="animate-spin" /> Loading file…
+        </div>
+      ) : items ? (
+        <div className="rounded-lg border border-slate-700/40 overflow-hidden">
+          {pathStack.length > 0 && (
+            <button
+              onClick={() => goTo(pathStack.length - 1)}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-800/40 border-b border-slate-700/30 transition-all"
+            >
+              <Folder size={12} className="text-slate-700" /> ..
+            </button>
+          )}
+          {items.map((item, i) => (
+            <button
+              key={item.sha + i}
+              onClick={() => item.type === 'dir' ? openDir(item) : loadFile(item)}
+              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-xs hover:bg-slate-800/40 border-b border-slate-700/20 last:border-0 transition-all group text-left"
+            >
+              {fileIcon(item)}
+              <span className={`flex-1 font-mono truncate ${
+                item.type === 'dir' ? 'text-slate-200 group-hover:text-white' : 'text-slate-400 group-hover:text-slate-200'
+              }`}>{item.name}</span>
+              {item.type === 'file' && item.size > 0 && (
+                <span className="text-[10px] text-slate-700 shrink-0">{humanSize(item.size)}</span>
+              )}
+              {item.type === 'dir' && <ChevronRight size={10} className="text-slate-700 shrink-0" />}
+            </button>
+          ))}
+          {items.length === 0 && (
+            <p className="text-xs text-slate-700 px-3 py-4">Empty directory</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+const EXT_LANG: Record<string, string> = {
+  ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
+  py: 'python', rs: 'rust', go: 'go', rb: 'ruby', java: 'java',
+  cs: 'csharp', cpp: 'cpp', c: 'c', php: 'php', swift: 'swift',
+  kt: 'kotlin', dart: 'dart', sh: 'bash', bash: 'bash', zsh: 'bash',
+  md: 'markdown', mdx: 'markdown', json: 'json', yml: 'yaml', yaml: 'yaml',
+  toml: 'toml', xml: 'xml', html: 'html', css: 'css', scss: 'scss',
+  sql: 'sql', dockerfile: 'docker', tf: 'hcl', vue: 'html',
+  txt: 'text', gitignore: 'text', env: 'text', lock: 'text',
 }
