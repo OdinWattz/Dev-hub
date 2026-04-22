@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Send, RotateCcw, Copy, Zap, MessageSquare, Key, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -137,8 +137,15 @@ export default function APIExplorerPage() {
   const [apiKey, setApiKey] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('groq_api_key') ?? '' : '')
   const [showKey, setShowKey] = useState(false)
   const [chatModel, setChatModel] = useState('llama-3.3-70b-versatile')
-  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [messages, setMessages] = useState<ChatMsg[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem('chat_messages') ?? '[]') } catch { return [] }
+  })
   const [chatInput, setChatInput] = useState('')
+
+  useEffect(() => {
+    localStorage.setItem('chat_messages', JSON.stringify(messages))
+  }, [messages])
   const [chatLoading, setChatLoading] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -388,7 +395,7 @@ export default function APIExplorerPage() {
               Stuur
             </button>
             {messages.length > 0 && (
-              <button onClick={() => setMessages([])} className="btn-ghost">Wissen</button>
+              <button onClick={() => { setMessages([]); localStorage.removeItem('chat_messages') }} className="btn-ghost">Wissen</button>
             )}
           </div>
         </div>
