@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -16,6 +17,8 @@ import {
   Cpu,
   ExternalLink,
   Settings,
+  Menu,
+  X,
 } from 'lucide-react'
 
 const NAV = [
@@ -34,9 +37,26 @@ const NAV = [
 
 export default function Sidebar() {
   const path = usePathname()
+  const [open, setOpen] = useState(false)
 
-  return (
-    <aside className="fixed left-0 top-0 h-full w-56 bg-slate-900/80 border-r border-slate-700/40 backdrop-blur-md flex flex-col z-40">
+  // Close sidebar on route change (mobile)
+  useEffect(() => { setOpen(false) }, [path])
+
+  // Prevent body scroll when open on mobile
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
+  const sidebar = (
+    <aside className={`
+      fixed left-0 top-0 h-full w-56
+      bg-slate-900/95 border-r border-slate-700/40 backdrop-blur-md
+      flex flex-col z-40
+      transition-transform duration-200
+      md:translate-x-0
+      ${open ? 'translate-x-0' : '-translate-x-full'}
+    `}>
       {/* Logo */}
       <div className="px-4 py-5 border-b border-slate-700/40">
         <div className="flex items-center gap-2">
@@ -91,5 +111,36 @@ export default function Sidebar() {
         </a>
       </div>
     </aside>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900/95 border-b border-slate-700/40 backdrop-blur-md">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="text-slate-400 hover:text-white transition-colors p-1"
+          aria-label="Toggle menu"
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-md bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
+            <Cpu size={12} className="text-cyan-400" />
+          </div>
+          <span className="text-sm font-bold text-white tracking-tight">DevHub</span>
+        </div>
+      </div>
+
+      {/* Backdrop (mobile only) */}
+      {open && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {sidebar}
+    </>
   )
 }
