@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, RotateCcw, Copy, Zap, MessageSquare, Key, ChevronDown, ChevronUp, History, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type Preset = { label: string; url: string; desc: string; emoji: string }
+type Preset = { label: string; url: string | (() => string); desc: string; emoji: string }
 
 const PRESETS: Preset[] = [
   {
@@ -105,8 +105,8 @@ const PRESETS: Preset[] = [
   },
   {
     label: 'Random Book',
-    url: 'https://openlibrary.org/search.json?q=subject:fiction&sort=random&limit=1&fields=title,author_name,first_publish_year,subject',
-    desc: 'Open Library — random fiction book (changes every request)',
+    url: () => `https://openlibrary.org/search.json?q=subject:fiction&limit=1&offset=${Math.floor(Math.random() * 5000)}&fields=title,author_name,first_publish_year,subject`,
+    desc: 'Open Library — random fiction book (different every click)',
     emoji: '📚',
   },
   {
@@ -327,7 +327,7 @@ export default function APIExplorerPage() {
             {PRESETS.map(p => (
               <button
                 key={p.label}
-                onClick={() => { setUrl(p.url); call(p.url) }}
+                onClick={() => { const u = typeof p.url === 'function' ? p.url() : p.url; setUrl(u); call(u) }}
                 className="w-full card text-left hover:border-cyan-500/30 transition-all group"
               >
                 <div className="flex items-center gap-2">
