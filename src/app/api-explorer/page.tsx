@@ -104,9 +104,9 @@ const PRESETS: Preset[] = [
     emoji: '₿',
   },
   {
-    label: 'Open Library Search',
-    url: 'https://openlibrary.org/search.json?q=javascript&limit=3&fields=title,author_name,first_publish_year',
-    desc: 'Open Library — search books about JavaScript',
+    label: 'Random Book',
+    url: 'https://openlibrary.org/search.json?q=subject:fiction&sort=random&limit=1&fields=title,author_name,first_publish_year,subject',
+    desc: 'Open Library — random fiction book (changes every request)',
     emoji: '📚',
   },
   {
