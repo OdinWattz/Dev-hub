@@ -17,6 +17,7 @@ type WeatherData = {
     time: string[]
     temperature_2m: number[]
     precipitation_probability: number[]
+    weather_code: number[]
   }
   daily: {
     time: string[]
@@ -74,7 +75,7 @@ export default function WeatherPage() {
       const res = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
         `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,visibility` +
-        `&hourly=temperature_2m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+        `&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
         `&wind_speed_unit=kmh&forecast_days=7&timezone=auto`
       )
       const data = await res.json()
@@ -247,6 +248,48 @@ export default function WeatherPage() {
               </div>
             </div>
           </div>
+
+          {/* Hourly forecast – next 24 hours */}
+          {weather?.hourly && (() => {
+            const now = new Date()
+            const startIdx = weather.hourly.time.findIndex(t => new Date(t) >= now)
+            const idx = startIdx === -1 ? 0 : startIdx
+            const slice = weather.hourly.time.slice(idx, idx + 24)
+            return (
+              <div className="mb-4">
+                <p className="section-label mb-3">Next 24 Hours</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {slice.map((t, i) => {
+                    const d = new Date(t)
+                    const hi = idx + i
+                    const wInfo = getWeather(weather.hourly.weather_code[hi])
+                    const isNow = i === 0
+                    return (
+                      <div
+                        key={t}
+                        className={`flex-shrink-0 card text-center py-3 px-2 w-16 ${
+                          isNow ? 'border-sky-500/40 bg-sky-500/5' : ''
+                        }`}
+                      >
+                        <p className="text-[10px] text-slate-500 mb-1">
+                          {isNow ? 'Now' : d.getHours().toString().padStart(2, '0') + ':00'}
+                        </p>
+                        <p className="text-xl mb-1">{wInfo.emoji}</p>
+                        <p className="text-xs font-semibold text-white">
+                          {Math.round(weather.hourly.temperature_2m[hi])}°
+                        </p>
+                        {weather.hourly.precipitation_probability[hi] > 20 && (
+                          <p className="text-[10px] text-blue-400 mt-1">
+                            💧{weather.hourly.precipitation_probability[hi]}%
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* 7-day forecast */}
           {weather?.daily && (
