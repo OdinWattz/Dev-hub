@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, Wind, Droplets, Eye, RotateCcw, MapPin, Star, Gauge, Cloud, Sunrise, Sunset } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Search, Wind, Droplets, Eye, RotateCcw, MapPin, Star, Gauge, Cloud, Sunrise, Sunset, Navigation, Thermometer } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import toast from 'react-hot-toast'
 
 type WeatherData = {
@@ -10,6 +11,7 @@ type WeatherData = {
     relative_humidity_2m: number
     wind_speed_10m: number
     wind_direction_10m: number
+    wind_gusts_10m: number
     weather_code: number
     apparent_temperature: number
     visibility: number
@@ -21,10 +23,13 @@ type WeatherData = {
     time: string[]
     temperature_2m: number[]
     precipitation_probability: number[]
+    precipitation: number[]
+    snowfall: number[]
     weather_code: number[]
     uv_index: number[]
     wind_speed_10m: number[]
     wind_direction_10m: number[]
+    visibility: number[]
   }
   daily: {
     time: string[]
@@ -33,10 +38,21 @@ type WeatherData = {
     weather_code: number[]
     precipitation_probability_max: number[]
     precipitation_sum: number[]
+    snowfall_sum: number[]
     wind_speed_10m_max: number[]
+    wind_gusts_10m_max: number[]
     uv_index_max: number[]
     sunrise: string[]
     sunset: string[]
+  }
+}
+
+type AQIData = {
+  hourly: {
+    time: string[]
+    european_aqi: number[]
+    pm2_5: number[]
+    pm10: number[]
   }
 }
 
@@ -89,6 +105,45 @@ function uvColor(uv: number): string {
   return 'text-purple-400'
 }
 
+function aqiLabel(aqi: number): string {
+  if (aqi <= 20) return 'Good'
+  if (aqi <= 40) return 'Fair'
+  if (aqi <= 60) return 'Moderate'
+  if (aqi <= 80) return 'Poor'
+  if (aqi <= 100) return 'Very Poor'
+  return 'Extremely Poor'
+}
+
+function aqiColor(aqi: number): string {
+  if (aqi <= 20) return 'text-green-400'
+  if (aqi <= 40) return 'text-yellow-400'
+  if (aqi <= 60) return 'text-orange-400'
+  if (aqi <= 80) return 'text-red-400'
+  if (aqi <= 100) return 'text-purple-400'
+  return 'text-fuchsia-400'
+}
+
+function aqiBgClass(aqi: number): string {
+  if (aqi <= 20) return 'stroke-green-500'
+  if (aqi <= 40) return 'stroke-yellow-500'
+  if (aqi <= 60) return 'stroke-orange-500'
+  if (aqi <= 80) return 'stroke-red-500'
+  if (aqi <= 100) return 'stroke-purple-500'
+  return 'stroke-fuchsia-500'
+}
+
+function calcDewPoint(t: number, rh: number): number {
+  const a = 17.625, b = 243.04
+  const γ = Math.log(rh / 100) + (a * t) / (b + t)
+  return (b * γ) / (a - γ)
+}
+
+function toF(c: number): number { return c * 9 / 5 + 32 }
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse bg-slate-700/50 rounded ${className}`} />
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const DAY_PERIODS = [
@@ -102,32 +157,49 @@ export default function WeatherPage() {
   const [city, setCity] = useState('')
   const [location, setLocation] = useState<GeoResult | null>(null)
   const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [aqi, setAqi] = useState<AQIData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [geoLoading, setGeoLoading] = useState(false)
   const [geoResults, setGeoResults] = useState<GeoResult[]>([])
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [unit, setUnit] = useState<'C' | 'F'>('C')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [savedCities, setSavedCities] = useState<GeoResult[]>(() => {
     if (typeof window === 'undefined') return []
     try { return JSON.parse(localStorage.getItem('weather_saved') ?? '[]') } catch { return [] }
   })
 
-  const fetchWeather = async (lat: number, lon: number) => {
+  const fetchAQI = useCallback(async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}` +
+        `&hourly=european_aqi,pm2_5,pm10&timezone=auto&forecast_days=1`
+      )
+      const data = await res.json()
+      setAqi(data)
+    } catch { /* silently fail */ }
+  }, [])
+
+  const fetchWeather = useCallback(async (lat: number, lon: number) => {
     setLoading(true)
     try {
       const res = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,visibility,surface_pressure,uv_index,cloud_cover` +
-        `&hourly=temperature_2m,precipitation_probability,weather_code,uv_index,wind_speed_10m,wind_direction_10m` +
-        `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max,sunrise,sunset` +
+        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,surface_pressure,uv_index,cloud_cover` +
+        `&hourly=temperature_2m,precipitation_probability,precipitation,snowfall,weather_code,uv_index,wind_speed_10m,wind_direction_10m,visibility` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset` +
         `&wind_speed_unit=kmh&forecast_days=7&timezone=auto`
       )
       const data = await res.json()
       setWeather(data)
+      setLastUpdated(new Date())
+      fetchAQI(lat, lon)
     } catch {
       toast.error('Failed to fetch weather data')
     } finally {
       setLoading(false)
     }
-  }
+  }, [fetchAQI])
 
   const searchCity = async () => {
     if (!city.trim()) return
@@ -153,6 +225,34 @@ export default function WeatherPage() {
     fetchWeather(geo.latitude, geo.longitude)
   }
 
+  const detectLocation = () => {
+    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return }
+    setGeoLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords: { latitude, longitude } }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          )
+          const data = await res.json()
+          const name = data.address?.city || data.address?.town || data.address?.village || data.address?.county || 'My Location'
+          const country = data.address?.country ?? ''
+          const geo: GeoResult = { name, latitude, longitude, country }
+          setLocation(geo); setCity(name); setSelectedDay(null)
+          fetchWeather(latitude, longitude)
+        } catch {
+          const geo: GeoResult = { name: 'My Location', latitude, longitude, country: '' }
+          setLocation(geo); setCity('My Location'); setSelectedDay(null)
+          fetchWeather(latitude, longitude)
+        } finally { setGeoLoading(false) }
+      },
+      (err) => {
+        setGeoLoading(false)
+        toast.error(err.code === 1 ? 'Location access denied' : 'Could not get your location')
+      }
+    )
+  }
+
   const toggleSave = (geo: GeoResult) => {
     setSavedCities(prev => {
       const exists = prev.some(c => c.name === geo.name && c.country === geo.country)
@@ -173,20 +273,54 @@ export default function WeatherPage() {
     fetchWeather(52.861, 6.513)
     setLocation({ name: 'Beilen', latitude: 52.861, longitude: 6.513, country: 'Netherlands' })
     setCity('Beilen')
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const w = weather?.current
-
+  const fmtShort = (c: number) => unit === 'C' ? `${Math.round(c)}°` : `${Math.round(toF(c))}°`
   const fmtTime = (iso: string) => {
     const d = new Date(iso)
     return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0')
   }
 
+  const currentAQI = (() => {
+    if (!aqi) return null
+    const now = new Date()
+    const idx = aqi.hourly.time.findIndex(t => new Date(t) >= now)
+    const i = Math.max(0, idx === -1 ? 0 : idx - 1)
+    return { aqi: aqi.hourly.european_aqi[i], pm25: aqi.hourly.pm2_5[i], pm10: aqi.hourly.pm10[i] }
+  })()
+
   return (
     <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="page-title">🌤️ Weather</h1>
-        <p className="page-subtitle">Real-time weather via Open-Meteo (no API key needed)</p>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="page-title">🌤️ Weather</h1>
+          <p className="page-subtitle">Real-time weather via Open-Meteo (no API key needed)</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setUnit(u => u === 'C' ? 'F' : 'C')}
+            className="btn-ghost px-2 py-1 text-xs font-mono"
+          >
+            °{unit === 'C' ? 'C' : 'F'} → °{unit === 'C' ? 'F' : 'C'}
+          </button>
+          {lastUpdated && (
+            <span className="text-[10px] text-slate-600">
+              {lastUpdated.getHours().toString().padStart(2, '0')}:{lastUpdated.getMinutes().toString().padStart(2, '0')}
+            </span>
+          )}
+          {location && (
+            <button
+              onClick={() => fetchWeather(location.latitude, location.longitude)}
+              className="btn-ghost px-2 py-1"
+              title="Refresh"
+              disabled={loading}
+            >
+              <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -202,6 +336,14 @@ export default function WeatherPage() {
               onKeyDown={e => e.key === 'Enter' && searchCity()}
             />
           </div>
+          <button
+            onClick={detectLocation}
+            className="btn-ghost px-3"
+            title="Use my location"
+            disabled={geoLoading}
+          >
+            {geoLoading ? <RotateCcw size={14} className="animate-spin" /> : <Navigation size={14} />}
+          </button>
           <button onClick={searchCity} className="btn-primary">
             <Search size={14} /> Search
           </button>
@@ -243,9 +385,23 @@ export default function WeatherPage() {
         </div>
       )}
 
+      {/* Skeleton loader */}
       {loading && (
-        <div className="card flex items-center justify-center py-16 text-slate-600">
-          <RotateCcw size={20} className="animate-spin mr-2" /> Fetching weather…
+        <div className="space-y-4">
+          <div className="card p-5 space-y-4">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-16 w-24" />
+            <Skeleton className="h-3 w-20" />
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-700/40">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-8" />)}
+            </div>
+          </div>
+          <div className="card">
+            <Skeleton className="h-3 w-24 mb-3" />
+            <div className="flex gap-2">
+              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-20 w-16 shrink-0" />)}
+            </div>
+          </div>
         </div>
       )}
 
@@ -266,9 +422,9 @@ export default function WeatherPage() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-6xl font-bold text-white">{Math.round(w.temperature_2m)}°</p>
+                <p className="text-6xl font-bold text-white">{fmtShort(w.temperature_2m)}</p>
                 <p className="text-slate-400 mt-1">{getWeather(w.weather_code).label}</p>
-                <p className="text-xs text-slate-600 mt-0.5">Feels like {Math.round(w.apparent_temperature)}°C</p>
+                <p className="text-xs text-slate-600 mt-0.5">Feels like {fmtShort(w.apparent_temperature)}{unit === 'C' ? 'C' : 'F'}</p>
               </div>
               <p className="text-7xl">{getWeather(w.weather_code).emoji}</p>
             </div>
@@ -287,6 +443,7 @@ export default function WeatherPage() {
                   <p className="text-sm font-semibold text-white">
                     {Math.round(w.wind_speed_10m)} km/h <span className="text-slate-500 text-xs font-normal">{windDir(w.wind_direction_10m)}</span>
                   </p>
+                  <p className="text-[10px] text-slate-600">Gusts {Math.round(w.wind_gusts_10m)} km/h</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -310,6 +467,15 @@ export default function WeatherPage() {
                 <div>
                   <p className="text-xs text-slate-500">Pressure</p>
                   <p className="text-sm font-semibold text-white">{Math.round(w.surface_pressure ?? 0)} hPa</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Thermometer size={14} className="text-teal-400" />
+                <div>
+                  <p className="text-xs text-slate-500">Dew Point</p>
+                  <p className="text-sm font-semibold text-white">
+                    {fmtShort(calcDewPoint(w.temperature_2m, w.relative_humidity_2m))}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -341,6 +507,41 @@ export default function WeatherPage() {
             )}
           </div>
 
+          {/* Air Quality */}
+          {currentAQI !== null && (
+            <div className="card mb-4">
+              <p className="section-label mb-3">Air Quality (EU AQI)</p>
+              <div className="flex items-center gap-5">
+                <div className="flex flex-col items-center">
+                  <div className="relative w-16 h-16 flex items-center justify-center">
+                    <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
+                      <circle cx="18" cy="18" r="14" fill="none" stroke="#1e293b" strokeWidth="3" />
+                      <circle
+                        cx="18" cy="18" r="14" fill="none"
+                        strokeWidth="3"
+                        className={aqiBgClass(currentAQI.aqi)}
+                        strokeDasharray={`${Math.min(currentAQI.aqi, 100) * 0.88} 88`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="absolute text-sm font-bold text-white">{currentAQI.aqi}</span>
+                  </div>
+                  <p className={`text-xs mt-1 font-medium ${aqiColor(currentAQI.aqi)}`}>{aqiLabel(currentAQI.aqi)}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                  <div>
+                    <p className="text-xs text-slate-500">PM2.5</p>
+                    <p className="text-sm font-semibold text-white">{currentAQI.pm25?.toFixed(1) ?? '—'} µg/m³</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">PM10</p>
+                    <p className="text-sm font-semibold text-white">{currentAQI.pm10?.toFixed(1) ?? '—'} µg/m³</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Hourly forecast – next 24 hours */}
           {weather?.hourly && (() => {
             const now = new Date()
@@ -359,7 +560,7 @@ export default function WeatherPage() {
                     return (
                       <div
                         key={t}
-                        className={`flex-shrink-0 card text-center py-3 px-2 w-16 ${
+                        className={`flex-shrink-0 card text-center py-3 px-2 w-[4.5rem] ${
                           isNow ? 'border-sky-500/40 bg-sky-500/5' : ''
                         }`}
                       >
@@ -368,13 +569,17 @@ export default function WeatherPage() {
                         </p>
                         <p className="text-xl mb-1">{wInfo.emoji}</p>
                         <p className="text-xs font-semibold text-white">
-                          {Math.round(weather.hourly.temperature_2m[hi])}°
+                          {fmtShort(weather.hourly.temperature_2m[hi])}
                         </p>
-                        {weather.hourly.precipitation_probability[hi] > 20 && (
-                          <p className="text-[10px] text-blue-400 mt-1">
-                            💧{weather.hourly.precipitation_probability[hi]}%
-                          </p>
-                        )}
+                        {(() => {
+                          const snow = weather.hourly.snowfall[hi] ?? 0
+                          const precip = weather.hourly.precipitation[hi] ?? 0
+                          if (snow > 0) return <p className="text-[10px] text-sky-200 mt-0.5">❄️{snow.toFixed(1)}cm</p>
+                          if (precip > 0) return <p className="text-[10px] text-blue-400 mt-0.5">💧{precip.toFixed(1)}mm</p>
+                          if (weather.hourly.precipitation_probability[hi] > 20)
+                            return <p className="text-[10px] text-slate-500 mt-0.5">{weather.hourly.precipitation_probability[hi]}%</p>
+                          return null
+                        })()}
                       </div>
                     )
                   })}
@@ -404,11 +609,13 @@ export default function WeatherPage() {
                     >
                       <p className="text-[10px] text-slate-500 mb-1">{i === 0 ? 'Today' : WEEKDAYS[d.getDay()]}</p>
                       <p className="text-xl mb-1">{wInfo.emoji}</p>
-                      <p className="text-xs font-semibold text-white">{Math.round(weather.daily.temperature_2m_max[i])}°</p>
-                      <p className="text-[10px] text-slate-600">{Math.round(weather.daily.temperature_2m_min[i])}°</p>
-                      {weather.daily.precipitation_sum[i] > 0 && (
+                      <p className="text-xs font-semibold text-white">{fmtShort(weather.daily.temperature_2m_max[i])}</p>
+                      <p className="text-[10px] text-slate-600">{fmtShort(weather.daily.temperature_2m_min[i])}</p>
+                      {(weather.daily.snowfall_sum?.[i] ?? 0) > 0 ? (
+                        <p className="text-[10px] text-sky-200 mt-1">❄️{weather.daily.snowfall_sum[i].toFixed(1)}cm</p>
+                      ) : weather.daily.precipitation_sum[i] > 0 ? (
                         <p className="text-[10px] text-blue-400 mt-1">💧{weather.daily.precipitation_sum[i].toFixed(1)}mm</p>
-                      )}
+                      ) : null}
                     </button>
                   )
                 })}
@@ -432,11 +639,14 @@ export default function WeatherPage() {
                   <div>
                     <p className="text-sm font-semibold text-white mb-0.5">{dayLabel}</p>
                     <p className="text-xs text-slate-500">
-                      {Math.round(weather.daily.temperature_2m_min[selectedDay])}°
+                      {fmtShort(weather.daily.temperature_2m_min[selectedDay])}
                       {' – '}
-                      {Math.round(weather.daily.temperature_2m_max[selectedDay])}°
-                      &nbsp;·&nbsp;UV max {Math.round(weather.daily.uv_index_max[selectedDay])} <span className={uvColor(weather.daily.uv_index_max[selectedDay])}>({uvLabel(weather.daily.uv_index_max[selectedDay])})</span>
-                      &nbsp;·&nbsp;Wind max {Math.round(weather.daily.wind_speed_10m_max[selectedDay])} km/h
+                      {fmtShort(weather.daily.temperature_2m_max[selectedDay])}
+                      &nbsp;·&nbsp;UV max {Math.round(weather.daily.uv_index_max[selectedDay])}{' '}
+                      <span className={uvColor(weather.daily.uv_index_max[selectedDay])}>
+                        ({uvLabel(weather.daily.uv_index_max[selectedDay])})
+                      </span>
+                      &nbsp;·&nbsp;Gusts {Math.round(weather.daily.wind_gusts_10m_max[selectedDay])} km/h
                     </p>
                   </div>
                   {sr && ss && (
@@ -446,6 +656,38 @@ export default function WeatherPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Temperature chart */}
+                {(() => {
+                  const chartData: { hour: string; temp: number }[] = []
+                  for (let h = 0; h < 24; h++) {
+                    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(h).padStart(2, '0')}:00`
+                    const hi = weather.hourly.time.findIndex(t => t === iso)
+                    if (hi !== -1) {
+                      chartData.push({
+                        hour: `${String(h).padStart(2, '0')}:00`,
+                        temp: unit === 'C' ? Math.round(weather.hourly.temperature_2m[hi]) : Math.round(toF(weather.hourly.temperature_2m[hi]))
+                      })
+                    }
+                  }
+                  if (chartData.length === 0) return null
+                  return (
+                    <div className="mb-4 -mx-1">
+                      <ResponsiveContainer width="100%" height={90}>
+                        <LineChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                          <XAxis dataKey="hour" tick={{ fill: '#64748b', fontSize: 9 }} tickLine={false} axisLine={false} interval={2} />
+                          <YAxis tick={{ fill: '#64748b', fontSize: 9 }} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                          <Tooltip
+                            contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 6, fontSize: 11 }}
+                            labelStyle={{ color: '#94a3b8' }}
+                            formatter={(v) => [`${v}°${unit}`, 'Temp']}
+                          />
+                          <Line type="monotone" dataKey="temp" stroke="#38bdf8" strokeWidth={2} dot={false} activeDot={{ r: 3, fill: '#38bdf8' }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )
+                })()}
 
                 {DAY_PERIODS.map(period => {
                   const slots = period.hours.flatMap(h => {
@@ -467,22 +709,30 @@ export default function WeatherPage() {
                         {slots.map(({ t, slotIdx }) => {
                           const hour = new Date(t)
                           const wInfo = getWeather(weather.hourly.weather_code[slotIdx])
+                          const snow = weather.hourly.snowfall[slotIdx] ?? 0
+                          const precip = weather.hourly.precipitation[slotIdx] ?? 0
+                          const visKm = Math.round((weather.hourly.visibility[slotIdx] ?? 0) / 1000)
                           return (
-                            <div key={t} className="flex-shrink-0 bg-slate-800/60 rounded-lg text-center py-2 px-2 w-16">
+                            <div key={t} className="flex-shrink-0 bg-slate-800/60 rounded-lg text-center py-2 px-2 w-[4.5rem]">
                               <p className="text-[10px] text-slate-500 mb-1">
                                 {hour.getHours().toString().padStart(2, '0')}:00
                               </p>
                               <p className="text-lg mb-1">{wInfo.emoji}</p>
                               <p className="text-xs font-semibold text-white">
-                                {Math.round(weather.hourly.temperature_2m[slotIdx])}°
+                                {fmtShort(weather.hourly.temperature_2m[slotIdx])}
                               </p>
                               <p className="text-[10px] text-slate-500">
                                 {Math.round(weather.hourly.wind_speed_10m[slotIdx])} km/h
                               </p>
-                              {weather.hourly.precipitation_probability[slotIdx] > 10 && (
-                                <p className="text-[10px] text-blue-400">
-                                  💧{weather.hourly.precipitation_probability[slotIdx]}%
-                                </p>
+                              {snow > 0 ? (
+                                <p className="text-[10px] text-sky-200">❄️{snow.toFixed(1)}cm</p>
+                              ) : precip > 0 ? (
+                                <p className="text-[10px] text-blue-400">💧{precip.toFixed(1)}mm</p>
+                              ) : weather.hourly.precipitation_probability[slotIdx] > 10 ? (
+                                <p className="text-[10px] text-slate-500">{weather.hourly.precipitation_probability[slotIdx]}%</p>
+                              ) : null}
+                              {visKm < 5 && visKm > 0 && (
+                                <p className="text-[10px] text-amber-500">👁 {visKm}km</p>
                               )}
                             </div>
                           )
