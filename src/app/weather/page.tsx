@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Wind, Droplets, Eye, RotateCcw, MapPin, Star } from 'lucide-react'
+import { Search, Wind, Droplets, Eye, RotateCcw, MapPin, Star, Gauge, Cloud, Sunrise, Sunset } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type WeatherData = {
@@ -9,15 +9,22 @@ type WeatherData = {
     temperature_2m: number
     relative_humidity_2m: number
     wind_speed_10m: number
+    wind_direction_10m: number
     weather_code: number
     apparent_temperature: number
     visibility: number
+    surface_pressure: number
+    uv_index: number
+    cloud_cover: number
   }
   hourly: {
     time: string[]
     temperature_2m: number[]
     precipitation_probability: number[]
     weather_code: number[]
+    uv_index: number[]
+    wind_speed_10m: number[]
+    wind_direction_10m: number[]
   }
   daily: {
     time: string[]
@@ -25,6 +32,11 @@ type WeatherData = {
     temperature_2m_min: number[]
     weather_code: number[]
     precipitation_probability_max: number[]
+    precipitation_sum: number[]
+    wind_speed_10m_max: number[]
+    uv_index_max: number[]
+    sunrise: string[]
+    sunset: string[]
   }
 }
 
@@ -56,7 +68,35 @@ function getWeather(code: number) {
   return WMO[nearest] ?? { label: 'Unknown', emoji: '❓' }
 }
 
+function windDir(deg: number): string {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  return dirs[Math.round(deg / 45) % 8]
+}
+
+function uvLabel(uv: number): string {
+  if (uv < 3) return 'Low'
+  if (uv < 6) return 'Moderate'
+  if (uv < 8) return 'High'
+  if (uv < 11) return 'Very High'
+  return 'Extreme'
+}
+
+function uvColor(uv: number): string {
+  if (uv < 3) return 'text-green-400'
+  if (uv < 6) return 'text-yellow-400'
+  if (uv < 8) return 'text-orange-400'
+  if (uv < 11) return 'text-red-400'
+  return 'text-purple-400'
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+const DAY_PERIODS = [
+  { label: 'Morning',   icon: '🌅', hours: [6, 7, 8, 9, 10, 11] },
+  { label: 'Afternoon', icon: '☀️', hours: [12, 13, 14, 15, 16, 17] },
+  { label: 'Evening',   icon: '🌆', hours: [18, 19, 20, 21] },
+  { label: 'Night',     icon: '🌙', hours: [22, 23, 0, 1, 2, 3, 4, 5] },
+]
 
 export default function WeatherPage() {
   const [city, setCity] = useState('')
@@ -64,6 +104,7 @@ export default function WeatherPage() {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(false)
   const [geoResults, setGeoResults] = useState<GeoResult[]>([])
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [savedCities, setSavedCities] = useState<GeoResult[]>(() => {
     if (typeof window === 'undefined') return []
     try { return JSON.parse(localStorage.getItem('weather_saved') ?? '[]') } catch { return [] }
@@ -74,8 +115,9 @@ export default function WeatherPage() {
     try {
       const res = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,visibility` +
-        `&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,visibility,surface_pressure,uv_index,cloud_cover` +
+        `&hourly=temperature_2m,precipitation_probability,weather_code,uv_index,wind_speed_10m,wind_direction_10m` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max,sunrise,sunset` +
         `&wind_speed_unit=kmh&forecast_days=7&timezone=auto`
       )
       const data = await res.json()
@@ -107,6 +149,7 @@ export default function WeatherPage() {
     setLocation(geo)
     setGeoResults([])
     setCity(geo.name)
+    setSelectedDay(null)
     fetchWeather(geo.latitude, geo.longitude)
   }
 
@@ -133,6 +176,11 @@ export default function WeatherPage() {
   }, [])
 
   const w = weather?.current
+
+  const fmtTime = (iso: string) => {
+    const d = new Date(iso)
+    return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0')
+  }
 
   return (
     <div className="max-w-3xl">
@@ -236,7 +284,9 @@ export default function WeatherPage() {
                 <Wind size={14} className="text-cyan-400" />
                 <div>
                   <p className="text-xs text-slate-500">Wind</p>
-                  <p className="text-sm font-semibold text-white">{Math.round(w.wind_speed_10m)} km/h</p>
+                  <p className="text-sm font-semibold text-white">
+                    {Math.round(w.wind_speed_10m)} km/h <span className="text-slate-500 text-xs font-normal">{windDir(w.wind_direction_10m)}</span>
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -246,7 +296,49 @@ export default function WeatherPage() {
                   <p className="text-sm font-semibold text-white">{Math.round((w.visibility ?? 0) / 1000)} km</p>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm leading-none">🔆</span>
+                <div>
+                  <p className="text-xs text-slate-500">UV Index</p>
+                  <p className={`text-sm font-semibold ${uvColor(w.uv_index ?? 0)}`}>
+                    {Math.round(w.uv_index ?? 0)} <span className="text-xs font-normal opacity-70">({uvLabel(w.uv_index ?? 0)})</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Gauge size={14} className="text-orange-400" />
+                <div>
+                  <p className="text-xs text-slate-500">Pressure</p>
+                  <p className="text-sm font-semibold text-white">{Math.round(w.surface_pressure ?? 0)} hPa</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Cloud size={14} className="text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-500">Cloud Cover</p>
+                  <p className="text-sm font-semibold text-white">{w.cloud_cover ?? 0}%</p>
+                </div>
+              </div>
             </div>
+            {/* Sunrise / Sunset */}
+            {weather?.daily?.sunrise?.[0] && (
+              <div className="flex gap-6 mt-4 pt-3 border-t border-slate-700/40">
+                <div className="flex items-center gap-2">
+                  <Sunrise size={14} className="text-yellow-400" />
+                  <div>
+                    <p className="text-xs text-slate-500">Sunrise</p>
+                    <p className="text-sm font-semibold text-white">{fmtTime(weather.daily.sunrise[0])}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sunset size={14} className="text-orange-400" />
+                  <div>
+                    <p className="text-xs text-slate-500">Sunset</p>
+                    <p className="text-sm font-semibold text-white">{fmtTime(weather.daily.sunset[0])}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Hourly forecast – next 24 hours */}
@@ -293,27 +385,115 @@ export default function WeatherPage() {
 
           {/* 7-day forecast */}
           {weather?.daily && (
-            <div>
-              <p className="section-label mb-3">7-Day Forecast</p>
+            <div className="mb-4">
+              <p className="section-label mb-3">
+                7-Day Forecast <span className="text-slate-600 font-normal text-xs normal-case">— click a day for details</span>
+              </p>
               <div className="grid grid-cols-7 gap-2">
                 {weather.daily.time.map((date, i) => {
                   const d = new Date(date)
                   const wInfo = getWeather(weather.daily.weather_code[i])
+                  const isSelected = selectedDay === i
                   return (
-                    <div key={date} className="card text-center py-3">
+                    <button
+                      key={date}
+                      onClick={() => setSelectedDay(isSelected ? null : i)}
+                      className={`card text-center py-3 transition-all hover:border-sky-500/40 cursor-pointer ${
+                        isSelected ? 'border-sky-500/40 bg-sky-500/5' : ''
+                      }`}
+                    >
                       <p className="text-[10px] text-slate-500 mb-1">{i === 0 ? 'Today' : WEEKDAYS[d.getDay()]}</p>
                       <p className="text-xl mb-1">{wInfo.emoji}</p>
                       <p className="text-xs font-semibold text-white">{Math.round(weather.daily.temperature_2m_max[i])}°</p>
                       <p className="text-[10px] text-slate-600">{Math.round(weather.daily.temperature_2m_min[i])}°</p>
-                      {weather.daily.precipitation_probability_max[i] > 20 && (
-                        <p className="text-[10px] text-blue-400 mt-1">💧{weather.daily.precipitation_probability_max[i]}%</p>
+                      {weather.daily.precipitation_sum[i] > 0 && (
+                        <p className="text-[10px] text-blue-400 mt-1">💧{weather.daily.precipitation_sum[i].toFixed(1)}mm</p>
                       )}
-                    </div>
+                    </button>
                   )
                 })}
               </div>
             </div>
           )}
+
+          {/* Day detail panel */}
+          {selectedDay !== null && weather?.hourly && weather?.daily && (() => {
+            const date = weather.daily.time[selectedDay]
+            const d = new Date(date)
+            const dayLabel = selectedDay === 0
+              ? 'Today'
+              : WEEKDAYS[d.getDay()] + ', ' + d.toLocaleDateString('en', { month: 'short', day: 'numeric' })
+            const sr = weather.daily.sunrise?.[selectedDay]
+            const ss = weather.daily.sunset?.[selectedDay]
+
+            return (
+              <div className="card border-sky-500/20 bg-gradient-to-br from-sky-500/3 to-transparent mb-4">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-semibold text-white mb-0.5">{dayLabel}</p>
+                    <p className="text-xs text-slate-500">
+                      {Math.round(weather.daily.temperature_2m_min[selectedDay])}°
+                      {' – '}
+                      {Math.round(weather.daily.temperature_2m_max[selectedDay])}°
+                      &nbsp;·&nbsp;UV max {Math.round(weather.daily.uv_index_max[selectedDay])} <span className={uvColor(weather.daily.uv_index_max[selectedDay])}>({uvLabel(weather.daily.uv_index_max[selectedDay])})</span>
+                      &nbsp;·&nbsp;Wind max {Math.round(weather.daily.wind_speed_10m_max[selectedDay])} km/h
+                    </p>
+                  </div>
+                  {sr && ss && (
+                    <div className="flex gap-3 text-xs text-slate-500 shrink-0">
+                      <span>🌅 {fmtTime(sr)}</span>
+                      <span>🌇 {fmtTime(ss)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {DAY_PERIODS.map(period => {
+                  const slots = period.hours.flatMap(h => {
+                    const targetDate = h < 6 && period.label === 'Night'
+                      ? new Date(d.getTime() + 24 * 60 * 60 * 1000)
+                      : d
+                    const isoPrefix = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}T${String(h).padStart(2, '0')}:00`
+                    const slotIdx = weather.hourly.time.findIndex(t => t === isoPrefix)
+                    return slotIdx !== -1 ? [{ t: weather.hourly.time[slotIdx], slotIdx }] : []
+                  })
+                  if (slots.length === 0) return null
+
+                  return (
+                    <div key={period.label} className="mb-3 last:mb-0">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">
+                        {period.icon} {period.label}
+                      </p>
+                      <div className="flex gap-2 overflow-x-auto pb-0.5">
+                        {slots.map(({ t, slotIdx }) => {
+                          const hour = new Date(t)
+                          const wInfo = getWeather(weather.hourly.weather_code[slotIdx])
+                          return (
+                            <div key={t} className="flex-shrink-0 bg-slate-800/60 rounded-lg text-center py-2 px-2 w-16">
+                              <p className="text-[10px] text-slate-500 mb-1">
+                                {hour.getHours().toString().padStart(2, '0')}:00
+                              </p>
+                              <p className="text-lg mb-1">{wInfo.emoji}</p>
+                              <p className="text-xs font-semibold text-white">
+                                {Math.round(weather.hourly.temperature_2m[slotIdx])}°
+                              </p>
+                              <p className="text-[10px] text-slate-500">
+                                {Math.round(weather.hourly.wind_speed_10m[slotIdx])} km/h
+                              </p>
+                              {weather.hourly.precipitation_probability[slotIdx] > 10 && (
+                                <p className="text-[10px] text-blue-400">
+                                  💧{weather.hourly.precipitation_probability[slotIdx]}%
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </>
       )}
     </div>
