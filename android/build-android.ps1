@@ -36,6 +36,7 @@ $env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:Path"
 
 Write-Host '1/3 Building static web app...'
 Set-Location $repoRoot
+$env:CAPACITOR_BUILD = '1'
 npm run build
 
 Write-Host '2/3 Syncing web assets to native Android project...'

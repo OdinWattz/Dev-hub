@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
+const isCapacitorBuild = process.env.CAPACITOR_BUILD === '1'
+
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
   trailingSlash: true,
-  assetPrefix: './',
+  // Use relative assets only for Capacitor static bundling.
+  // On Vercel/web this must be absolute to avoid /route/_next 404s.
+  assetPrefix: isCapacitorBuild ? './' : undefined,
   images: {
     unoptimized: true,
   },
