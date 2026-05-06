@@ -439,6 +439,7 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
   const [openFile, setOpenFile]     = useState<{ name: string; content: string; lang: string; url: string } | null>(null)
   const [fileLoading, setFileLoading] = useState(false)
   const [expanded, setExpanded]     = useState(false)
+  const [showMarkdownCode, setShowMarkdownCode] = useState(false)
 
   const currentPath = pathStack.join('/')
 
@@ -472,6 +473,7 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
         const raw = atob(data.content.replace(/\n/g, ''))
         const ext = item.name.split('.').pop()?.toLowerCase() ?? ''
         const lang = EXT_LANG[ext] ?? ext
+        setShowMarkdownCode(false)
         setOpenFile({ name: item.name, content: raw, lang, url: item.html_url })
       } else {
         // Too large or binary — open on GitHub
@@ -499,6 +501,26 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
 
   const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','svg','ico'])
   const isImage = (name: string) => IMAGE_EXTS.has(name.split('.').pop()?.toLowerCase() ?? '')
+  const isMarkdown = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase() ?? ''
+    return ext === 'md' || ext === 'mdx'
+  }
+
+  const renderMarkdown = (text: string): string => {
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return esc(text)
+      .replace(/^#{4}\s(.+)$/gm, '<h4 class="text-slate-200 font-semibold text-sm mt-3 mb-1">$1</h4>')
+      .replace(/^#{3}\s(.+)$/gm, '<h3 class="text-slate-100 font-semibold text-base mt-3 mb-1">$1</h3>')
+      .replace(/^#{2}\s(.+)$/gm, '<h2 class="text-slate-100 font-semibold text-lg mt-3 mb-1">$1</h2>')
+      .replace(/^#\s(.+)$/gm, '<h1 class="text-white font-bold text-xl mt-3 mb-2">$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-100">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em class="text-slate-300">$1</em>')
+      .replace(/~~(.+?)~~/g, '<del class="text-slate-500">$1</del>')
+      .replace(/`([^`]+)`/g, '<code class="bg-slate-800 px-1 py-0.5 rounded text-cyan-300 text-[11px] font-mono">$1</code>')
+      .replace(/^&gt;\s(.+)$/gm, '<blockquote class="border-l-2 border-slate-600 pl-3 text-slate-400 italic my-2">$1</blockquote>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-cyan-400 underline" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/\n/g, '<br>')
+  }
 
   const fileIcon = (item: TreeItem) => {
     if (item.type === 'dir') return <Folder size={13} className="text-sky-400 shrink-0" />
@@ -566,13 +588,30 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
         <div className="rounded-lg border border-slate-700/40 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/60 border-b border-slate-700/40">
             <span className="text-xs font-mono text-slate-300">{openFile.name}</span>
-            <a href={openFile.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-600 hover:text-slate-300 flex items-center gap-1">
-              <ExternalLink size={10} /> GitHub
-            </a>
+            <div className="flex items-center gap-2">
+              {isMarkdown(openFile.name) && (
+                <button
+                  onClick={() => setShowMarkdownCode(prev => !prev)}
+                  className="btn-ghost py-0.5 px-1.5 text-[10px]"
+                  title={showMarkdownCode ? 'Show markdown preview' : 'Show markdown source'}
+                >
+                  {showMarkdownCode ? 'Preview' : 'Code'}
+                </button>
+              )}
+              <a href={openFile.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-600 hover:text-slate-300 flex items-center gap-1">
+                <ExternalLink size={10} /> GitHub
+              </a>
+            </div>
           </div>
           {isImage(openFile.name) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={`data:image/*;base64,${btoa(openFile.content)}`} alt={openFile.name} className="max-w-full block mx-auto p-4" />
+          ) : isMarkdown(openFile.name) && !showMarkdownCode ? (
+            <div className="max-h-[480px] overflow-auto px-4 py-3 text-[13px] leading-relaxed text-slate-300">
+              <div
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(openFile.content) || '<span class="text-slate-700 italic">Empty markdown file</span>' }}
+              />
+            </div>
           ) : (
             <div className="max-h-[480px] overflow-auto text-[11px]">
               <SyntaxHighlighter
