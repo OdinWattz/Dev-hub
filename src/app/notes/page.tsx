@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit3, Save, X, Search, FileText, Star, Copy, ChevronDown, BookOpen } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 type Note = {
@@ -25,6 +26,7 @@ const COLORS = [
 const CATEGORIES = ['general', 'cheatsheet', 'architecture', 'commands', 'links', 'ideas']
 
 export default function NotesPage() {
+  const { language, locale } = useLanguage()
   const [notes, setNotes] = useState<Note[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
@@ -65,22 +67,22 @@ export default function NotesPage() {
   }
 
   const create = () => {
-    if (!form.title.trim()) { toast.error('Title required'); return }
+    if (!form.title.trim()) { toast.error(language === 'nl' ? 'Titel is verplicht' : 'Title required'); return }
     const note: Note = { ...form, id: crypto.randomUUID(), updatedAt: Date.now() }
     persist([note, ...notes])
     setForm({ title: '', content: '', category: 'general', color: 'cyan' })
     setCreating(false)
-    toast.success('Note created!')
+    toast.success(language === 'nl' ? 'Notitie aangemaakt!' : 'Note created!')
   }
 
   const update = (id: string, patch: Partial<Note>) => {
     persist(notes.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n))
-    toast.success('Saved')
+    toast.success(language === 'nl' ? 'Opgeslagen' : 'Saved')
   }
 
   const remove = (id: string) => {
     persist(notes.filter(n => n.id !== id))
-    toast('Note removed', { icon: '🗑️' })
+    toast(language === 'nl' ? 'Notitie verwijderd' : 'Note removed', { icon: '🗑️' })
   }
 
   const togglePin = (id: string) => {
@@ -89,7 +91,30 @@ export default function NotesPage() {
 
   const copyNote = (note: Note) => {
     navigator.clipboard.writeText(`# ${note.title}\n\n${note.content}`)
-    toast.success('Copied to clipboard!')
+    toast.success(language === 'nl' ? 'Gekopieerd naar klembord!' : 'Copied to clipboard!')
+  }
+
+  const copy = {
+    title: language === 'nl' ? '📝 Notities' : '📝 Notes',
+    subtitle: language === 'nl' ? 'Snelle notities, cheatsheets en referenties' : 'Quick notes, cheatsheets & references',
+    search: language === 'nl' ? 'Zoek notities…' : 'Search notes…',
+    newNote: language === 'nl' ? 'Nieuwe notitie' : 'New Note',
+    allCategories: language === 'nl' ? 'Alle categorieën' : 'All categories',
+    noteCount: language === 'nl' ? 'notitie' : 'note',
+    noteCountPlural: language === 'nl' ? 'notities' : 'notes',
+    color: language === 'nl' ? 'Kleur:' : 'Color:',
+    titlePlaceholder: language === 'nl' ? 'Titel…' : 'Title…',
+    contentPlaceholder: language === 'nl' ? 'Schrijf je notitie, cheatsheet of referentie…' : 'Write your note, cheatsheet, or reference…',
+    createNote: language === 'nl' ? 'Notitie maken' : 'Create Note',
+    cancel: language === 'nl' ? 'Annuleren' : 'Cancel',
+    noResults: language === 'nl' ? 'Geen resultaten' : 'No results',
+    noNotes: language === 'nl' ? 'Nog geen notities' : 'No notes yet',
+    unpin: language === 'nl' ? 'Losmaken' : 'Unpin',
+    pin: language === 'nl' ? 'Vastzetten' : 'Pin',
+    togglePreview: language === 'nl' ? 'Markdown preview wisselen' : 'Toggle markdown preview',
+    copyButton: language === 'nl' ? 'Kopieer' : 'Copy',
+    emptyNote: language === 'nl' ? 'Lege notitie' : 'Empty note',
+    save: language === 'nl' ? 'Opslaan' : 'Save',
   }
 
   const filtered = notes
@@ -110,8 +135,8 @@ export default function NotesPage() {
   return (
     <div className="max-w-5xl">
       <div className="mb-6">
-        <h1 className="page-title">📝 Notes</h1>
-        <p className="page-subtitle">Quick notes, cheatsheets & references</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="page-subtitle">{copy.subtitle}</p>
       </div>
 
       {/* Toolbar */}
@@ -120,34 +145,34 @@ export default function NotesPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             className="input !pl-10"
-            placeholder="Search notes…"
+            placeholder={copy.search}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <button onClick={() => setCreating(!creating)} className="btn-primary">
-          <Plus size={14} /> New Note
+          <Plus size={14} /> {copy.newNote}
         </button>
       </div>
       <div className="flex items-center gap-2 mb-6">
         <div className="relative">
           <select className="input text-xs appearance-none pr-6 cursor-pointer" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-            <option value="all">All categories</option>
+            <option value="all">{copy.allCategories}</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
         </div>
-        <span className="text-[10px] text-slate-600">{filtered.length} note{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="text-[10px] text-slate-600">{filtered.length} {filtered.length !== 1 ? copy.noteCountPlural : copy.noteCount}</span>
       </div>
 
       {/* Create form */}
       {creating && (
         <div className="card mb-6 border-cyan-500/20 space-y-3">
-          <p className="section-label">New Note</p>
+          <p className="section-label">{copy.newNote}</p>
           <div className="grid grid-cols-3 gap-3">
             <input
               className="input col-span-2"
-              placeholder="Title…"
+              placeholder={copy.titlePlaceholder}
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             />
@@ -161,7 +186,7 @@ export default function NotesPage() {
           </div>
           {/* Color picker */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Color:</span>
+            <span className="text-xs text-slate-500">{copy.color}</span>
             {COLORS.map(c => (
               <button
                 key={c.name}
@@ -172,13 +197,13 @@ export default function NotesPage() {
           </div>
           <textarea
             className="input font-mono text-xs min-h-[120px] resize-y"
-            placeholder="Write your note, cheatsheet, or reference…"
+            placeholder={copy.contentPlaceholder}
             value={form.content}
             onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
           />
           <div className="flex gap-2">
-            <button onClick={create} className="btn-primary">Create Note</button>
-            <button onClick={() => setCreating(false)} className="btn-ghost">Cancel</button>
+            <button onClick={create} className="btn-primary">{copy.createNote}</button>
+            <button onClick={() => setCreating(false)} className="btn-ghost">{copy.cancel}</button>
           </div>
         </div>
       )}
@@ -188,7 +213,7 @@ export default function NotesPage() {
         {filtered.length === 0 && (
           <div className="col-span-3 card text-center py-12 text-slate-600">
             <FileText size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">{search ? 'No results' : 'No notes yet'}</p>
+            <p className="text-sm">{search ? copy.noResults : copy.noNotes}</p>
           </div>
         )}
         {filtered.map(note => {
@@ -211,13 +236,13 @@ export default function NotesPage() {
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
-                      <button onClick={() => togglePin(note.id)} className={`btn-ghost py-0.5 px-1.5 ${note.pinned ? 'text-yellow-400' : ''}`} title={note.pinned ? 'Unpin' : 'Pin'}>
+                      <button onClick={() => togglePin(note.id)} className={`btn-ghost py-0.5 px-1.5 ${note.pinned ? 'text-yellow-400' : ''}`} title={note.pinned ? copy.unpin : copy.pin}>
                         <Star size={10} className={note.pinned ? 'fill-yellow-400' : ''} />
                       </button>
-                      <button onClick={() => toggleMdPreview(note.id)} className={`btn-ghost py-0.5 px-1.5 ${mdPreviews.has(note.id) ? 'text-cyan-400' : ''}`} title="Toggle markdown preview">
+                      <button onClick={() => toggleMdPreview(note.id)} className={`btn-ghost py-0.5 px-1.5 ${mdPreviews.has(note.id) ? 'text-cyan-400' : ''}`} title={copy.togglePreview}>
                         <BookOpen size={10} />
                       </button>
-                      <button onClick={() => copyNote(note)} className="btn-ghost py-0.5 px-1.5" title="Copy">
+                      <button onClick={() => copyNote(note)} className="btn-ghost py-0.5 px-1.5" title={copy.copyButton}>
                         <Copy size={10} />
                       </button>
                       <button onClick={() => setEditing(note.id)} className="btn-ghost py-0.5 px-1.5">
@@ -231,18 +256,18 @@ export default function NotesPage() {
                   {mdPreviews.has(note.id) ? (
                     <div
                       className="text-xs text-slate-400 flex-1 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: renderMd(note.content) || '<span class="text-slate-700 italic">Empty note</span>' }}
+                      dangerouslySetInnerHTML={{ __html: renderMd(note.content) || `<span class="text-slate-700 italic">${copy.emptyNote}</span>` }}
                     />
                   ) : (
                     <pre className="text-xs text-slate-400 whitespace-pre-wrap break-words flex-1 font-mono leading-relaxed">
-                      {note.content || <span className="text-slate-700 italic">Empty note</span>}
+                      {note.content || <span className="text-slate-700 italic">{copy.emptyNote}</span>}
                     </pre>
                   )}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/30">
                     <span className="text-[10px] text-slate-600">
                       {wordCount(note.content)}w · {note.content.length}c
                     </span>
-                    <span className="text-[10px] text-slate-600">{new Date(note.updatedAt).toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-600">{new Date(note.updatedAt).toLocaleString(locale)}</span>
                   </div>
                 </>
               )}
@@ -259,6 +284,7 @@ function EditNote({ note, onSave, onCancel }: {
   onSave: (patch: Partial<Note>) => void
   onCancel: () => void
 }) {
+  const { language } = useLanguage()
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
 
@@ -272,7 +298,7 @@ function EditNote({ note, onSave, onCancel }: {
       />
       <div className="flex gap-2">
         <button onClick={() => onSave({ title, content })} className="btn-primary flex-1 justify-center">
-          <Save size={12} /> Save
+          <Save size={12} /> {language === 'nl' ? 'Opslaan' : 'Save'}
         </button>
         <button onClick={onCancel} className="btn-ghost">
           <X size={12} />

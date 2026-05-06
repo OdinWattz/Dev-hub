@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Save, Eye, EyeOff, Trash2, CheckCircle, Download, Upload, AlertTriangle } from 'lucide-react'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 type Setting = {
@@ -33,6 +35,7 @@ const SETTINGS: Setting[] = [
 ]
 
 export default function SettingsPage() {
+  const { language } = useLanguage()
   const [values, setValues] = useState<Record<string, string>>({})
   const [show, setShow] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
@@ -55,14 +58,14 @@ export default function SettingsPage() {
       localStorage.removeItem(key)
     }
     setSaved(prev => ({ ...prev, [key]: true }))
-    toast.success('Opgeslagen')
+    toast.success(language === 'nl' ? 'Opgeslagen' : 'Saved')
     setTimeout(() => setSaved(prev => ({ ...prev, [key]: false })), 2000)
   }
 
   const clear = (key: string) => {
     localStorage.removeItem(key)
     setValues(prev => ({ ...prev, [key]: '' }))
-    toast.success('Verwijderd')
+    toast.success(language === 'nl' ? 'Verwijderd' : 'Removed')
   }
 
   const DATA_KEYS = ['devhub-snippets', 'devhub-notes', 'devhub-todos', 'chat_messages']
@@ -84,7 +87,7 @@ export default function SettingsPage() {
     a.download = `devhub-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('Backup gedownload!')
+    toast.success(language === 'nl' ? 'Backup gedownload!' : 'Backup downloaded!')
   }
 
   const importAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,8 +103,8 @@ export default function SettingsPage() {
         const loaded: Record<string, string> = {}
         for (const s of SETTINGS) { loaded[s.key] = localStorage.getItem(s.key) ?? '' }
         setValues(loaded)
-        toast.success('Backup hersteld! Herlaad de pagina om alles te zien.')
-      } catch { toast.error('Ongeldig backup bestand') }
+        toast.success(language === 'nl' ? 'Backup hersteld! Herlaad de pagina om alles te zien.' : 'Backup restored! Reload the page to refresh all data.')
+      } catch { toast.error(language === 'nl' ? 'Ongeldig backupbestand' : 'Invalid backup file') }
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -112,22 +115,43 @@ export default function SettingsPage() {
     for (const s of SETTINGS) localStorage.removeItem(s.key)
     setValues({})
     setConfirmClear(false)
-    toast.success('Alle data gewist')
+    toast.success(language === 'nl' ? 'Alle data gewist' : 'All data cleared')
+  }
+
+  const copy = {
+    title: language === 'nl' ? '⚙️ Instellingen' : '⚙️ Settings',
+    subtitle: language === 'nl' ? 'API-sleutels, taal en voorkeuren — alles wordt lokaal opgeslagen in je browser' : 'API keys, language and preferences — everything is stored locally in your browser',
+    languageTitle: language === 'nl' ? 'Taal' : 'Language',
+    languageDesc: language === 'nl' ? 'Kies of DevHub standaard Engels of Nederlands toont. Engels is de hoofdtaal.' : 'Choose whether DevHub shows English or Dutch by default. English is the primary language.',
+    newBackup: language === 'nl' ? 'Backup & Herstel' : 'Backup & Restore',
+    dangerDesc: language === 'nl' ? 'Wis alle opgeslagen data uit deze app (snippets, notities, taken, chat, API keys). Dit kan niet ongedaan gemaakt worden.' : 'Delete all saved data from this app (snippets, notes, tasks, chat, API keys). This cannot be undone.',
   }
 
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="page-title">⚙️ Settings</h1>
-        <p className="page-subtitle">API keys en voorkeuren — alles wordt lokaal opgeslagen in je browser</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="page-subtitle">{copy.subtitle}</p>
       </div>
 
       <div className="space-y-4">
+        <div className="card space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-200">{copy.languageTitle}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{copy.languageDesc}</p>
+          </div>
+          <LanguageSwitcher />
+        </div>
+
         {SETTINGS.map(s => (
           <div key={s.key} className="card space-y-3">
             <div>
               <p className="text-sm font-semibold text-slate-200">{s.label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {s.key === 'groq_api_key'
+                  ? (language === 'nl' ? 'Gebruikt voor de AI Chat in de API Explorer. Gratis account, geen creditcard nodig.' : 'Used for AI Chat in the API Explorer. Free account, no credit card required.')
+                  : (language === 'nl' ? 'Verhoogt de GitHub API rate limit van 60 naar 5000 requests/uur. Scope: public_repo (alleen lezen).' : 'Raises the GitHub API rate limit from 60 to 5000 requests/hour. Scope: public_repo (read-only).')}
+              </p>
               {s.link && (
                 <a href={s.link.url} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-cyan-500 hover:text-cyan-300 mt-0.5 inline-block">
@@ -158,8 +182,8 @@ export default function SettingsPage() {
 
               <button onClick={() => save(s.key)} className="btn-primary">
                 {saved[s.key]
-                  ? <><CheckCircle size={13} className="text-green-400" /> Opgeslagen</>
-                  : <><Save size={13} /> Opslaan</>
+                  ? <><CheckCircle size={13} className="text-green-400" /> {language === 'nl' ? 'Opgeslagen' : 'Saved'}</>
+                  : <><Save size={13} /> {language === 'nl' ? 'Opslaan' : 'Save'}</>
                 }
               </button>
 
@@ -173,7 +197,7 @@ export default function SettingsPage() {
             {values[s.key] && (
               <p className="text-[10px] text-green-500/70 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                Key aanwezig ({values[s.key].slice(0, 6)}••••)
+                {language === 'nl' ? 'Sleutel aanwezig' : 'Key detected'} ({values[s.key].slice(0, 6)}••••)
               </p>
             )}
           </div>
@@ -182,21 +206,26 @@ export default function SettingsPage() {
         {/* Info card */}
         <div className="card border-slate-700/20 bg-transparent">
           <p className="text-xs text-slate-600">
-            🔒 Keys worden uitsluitend opgeslagen in <code className="text-slate-500">localStorage</code> van je browser.
-            Ze verlaten je apparaat alleen wanneer jij een API call maakt — direct naar de betreffende service.
+            {language === 'nl'
+              ? '🔒 Keys worden uitsluitend opgeslagen in '
+              : '🔒 Keys are stored only in '}
+            <code className="text-slate-500">localStorage</code>
+            {language === 'nl'
+              ? ' van je browser. Ze verlaten je apparaat alleen wanneer jij een API-call maakt, direct naar de betreffende service.'
+              : ' in your browser. They only leave your device when you make an API call directly to the target service.'}
           </p>
         </div>
 
         {/* Backup / Restore */}
         <div className="card space-y-3">
-          <p className="text-sm font-semibold text-slate-200">Backup &amp; Restore</p>
-          <p className="text-xs text-slate-500">Exporteer al je snippets, notities, taken en instellingen naar één JSON bestand. Ideaal voor back-up of overzetten naar een andere browser.</p>
+          <p className="text-sm font-semibold text-slate-200">{copy.newBackup}</p>
+          <p className="text-xs text-slate-500">{language === 'nl' ? 'Exporteer al je snippets, notities, taken en instellingen naar één JSON-bestand. Ideaal voor back-up of overzetten naar een andere browser.' : 'Export all your snippets, notes, tasks and settings to a single JSON file. Ideal for backup or moving to another browser.'}</p>
           <div className="flex gap-2 flex-wrap">
             <button onClick={exportAll} className="btn-primary gap-1.5">
-              <Download size={13} /> Exporteer alles
+              <Download size={13} /> {language === 'nl' ? 'Exporteer alles' : 'Export all'}
             </button>
             <button onClick={() => importRef.current?.click()} className="btn-ghost gap-1.5">
-              <Upload size={13} /> Importeer backup
+              <Upload size={13} /> {language === 'nl' ? 'Importeer backup' : 'Import backup'}
             </button>
             <input ref={importRef} type="file" accept=".json" className="hidden" onChange={importAll} />
           </div>
@@ -207,16 +236,16 @@ export default function SettingsPage() {
           <p className="text-sm font-semibold text-red-400 flex items-center gap-2">
             <AlertTriangle size={14} /> Danger Zone
           </p>
-          <p className="text-xs text-slate-500">Wis alle opgeslagen data uit deze app (snippets, notities, taken, chat, API keys). Dit kan niet ongedaan gemaakt worden.</p>
+          <p className="text-xs text-slate-500">{copy.dangerDesc}</p>
           {!confirmClear ? (
             <button onClick={() => setConfirmClear(true)} className="btn-ghost text-red-400 border-red-500/20 hover:bg-red-500/10 text-xs gap-1.5">
-              <Trash2 size={12} /> Wis alle data
+              <Trash2 size={12} /> {language === 'nl' ? 'Wis alle data' : 'Clear all data'}
             </button>
           ) : (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-red-400">Weet je het zeker?</span>
-              <button onClick={clearAllData} className="btn-ghost text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs">Ja, wis alles</button>
-              <button onClick={() => setConfirmClear(false)} className="btn-ghost text-xs">Annuleer</button>
+              <span className="text-xs text-red-400">{language === 'nl' ? 'Weet je het zeker?' : 'Are you sure?'}</span>
+              <button onClick={clearAllData} className="btn-ghost text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs">{language === 'nl' ? 'Ja, wis alles' : 'Yes, clear everything'}</button>
+              <button onClick={() => setConfirmClear(false)} className="btn-ghost text-xs">{language === 'nl' ? 'Annuleren' : 'Cancel'}</button>
             </div>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Play, Pause, RotateCcw, SkipForward, Settings2, X, Volume2, VolumeX, Coffee, Zap, Trophy } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 type Mode = 'work' | 'short' | 'long'
@@ -50,6 +51,7 @@ function beep(type: 'start' | 'end') {
 }
 
 export default function FocusPage() {
+  const { language, locale } = useLanguage()
   const [config, setConfig] = useState<TimerConfig>(() => {
     if (typeof window === 'undefined') return DEFAULT_CONFIG
     try { return JSON.parse(localStorage.getItem('focus_config') ?? 'null') ?? DEFAULT_CONFIG } catch { return DEFAULT_CONFIG }
@@ -106,14 +108,14 @@ export default function FocusPage() {
               const next = c + 1
               setTotalToday(t => t + 1)
               saveSession(1, config.work)
-              toast.success(`🍅 Pomodoro #${next} done!`, { duration: 4000 })
+              toast.success(language === 'nl' ? `🍅 Pomodoro #${next} voltooid!` : `🍅 Pomodoro #${next} done!`, { duration: 4000 })
               // next break
               const nextMode: Mode = next % config.longAfter === 0 ? 'long' : 'short'
               setTimeout(() => switchMode(nextMode), 100)
               return next
             })
           } else {
-            toast(`☕ Break over — time to focus!`, { icon: '⏰', duration: 4000 })
+            toast(language === 'nl' ? '☕ Pauze voorbij — tijd om te focussen!' : '☕ Break over — time to focus!', { icon: '⏰', duration: 4000 })
             setTimeout(() => switchMode('work'), 100)
           }
           return currentMode
@@ -122,7 +124,7 @@ export default function FocusPage() {
       }
       return prev - 1
     })
-  }, [sound, config, saveSession, switchMode])
+  }, [sound, config, saveSession, switchMode, language])
 
   useEffect(() => {
     if (running) {
@@ -156,7 +158,26 @@ export default function FocusPage() {
     setTimeLeft(configDraft[mode] * 60)
     setRunning(false)
     setShowSettings(false)
-    toast.success('Settings saved')
+    toast.success(language === 'nl' ? 'Instellingen opgeslagen' : 'Settings saved')
+  }
+
+  const copy = {
+    title: language === 'nl' ? '🍅 Focus Timer' : '🍅 Focus Timer',
+    subtitle: language === 'nl' ? 'Pomodoro timer — blijf in flow, één sessie tegelijk' : 'Pomodoro timer — stay in flow, one session at a time',
+    toggleSound: language === 'nl' ? 'Geluid wisselen' : 'Toggle sound',
+    settings: language === 'nl' ? 'Instellingen' : 'Settings',
+    holdUntil: language === 'nl' ? 'tot lange pauze' : 'until long break',
+    thisSession: language === 'nl' ? 'Deze sessie' : 'This session',
+    todayTotal: language === 'nl' ? 'Vandaag totaal' : 'Today total',
+    focusTime: language === 'nl' ? 'Focus tijd vandaag' : 'Focus time today',
+    history: language === 'nl' ? 'Sessiegeschiedenis' : 'Session History',
+    today: language === 'nl' ? 'Vandaag' : 'Today',
+    focused: language === 'nl' ? 'gefocust' : 'focused',
+    timerSettings: language === 'nl' ? 'Timer instellingen' : 'Timer Settings',
+    save: language === 'nl' ? 'Opslaan' : 'Save',
+    cancel: language === 'nl' ? 'Annuleren' : 'Cancel',
+    reset: language === 'nl' ? 'Reset' : 'Reset',
+    skip: language === 'nl' ? 'Volgende' : 'Skip to next',
   }
 
   const mm = String(Math.floor(timeLeft / 60)).padStart(2, '0')
@@ -174,14 +195,14 @@ export default function FocusPage() {
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="page-title">🍅 Focus Timer</h1>
-          <p className="page-subtitle">Pomodoro timer — stay in flow, one session at a time</p>
+          <h1 className="page-title">{copy.title}</h1>
+          <p className="page-subtitle">{copy.subtitle}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setSound(v => !v)} className="btn-ghost px-2.5" title="Toggle sound">
+          <button onClick={() => setSound(v => !v)} className="btn-ghost px-2.5" title={copy.toggleSound}>
             {sound ? <Volume2 size={15} /> : <VolumeX size={15} className="text-slate-600" />}
           </button>
-          <button onClick={() => { setConfigDraft(config); setShowSettings(true) }} className="btn-ghost px-2.5" title="Settings">
+          <button onClick={() => { setConfigDraft(config); setShowSettings(true) }} className="btn-ghost px-2.5" title={copy.settings}>
             <Settings2 size={15} />
           </button>
         </div>
@@ -230,7 +251,7 @@ export default function FocusPage() {
 
         {/* Controls */}
         <div className="flex items-center gap-4">
-          <button onClick={reset} className="btn-ghost p-2.5 rounded-full" title="Reset">
+          <button onClick={reset} className="btn-ghost p-2.5 rounded-full" title={copy.reset}>
             <RotateCcw size={16} />
           </button>
           <button
@@ -242,7 +263,7 @@ export default function FocusPage() {
           >
             {running ? <Pause size={22} className="text-white" /> : <Play size={22} className="text-white ml-0.5" />}
           </button>
-          <button onClick={skip} className="btn-ghost p-2.5 rounded-full" title="Skip to next">
+          <button onClick={skip} className="btn-ghost p-2.5 rounded-full" title={copy.skip}>
             <SkipForward size={16} />
           </button>
         </div>
@@ -259,7 +280,7 @@ export default function FocusPage() {
               }`}
             />
           ))}
-          <span className="text-[10px] text-slate-600 ml-1">until long break</span>
+          <span className="text-[10px] text-slate-600 ml-1">{copy.holdUntil}</span>
         </div>
       </div>
 
@@ -267,15 +288,15 @@ export default function FocusPage() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="card text-center">
           <p className="text-2xl font-bold text-white">{pomodoroCount}</p>
-          <p className="text-xs text-slate-500 mt-0.5">This session</p>
+          <p className="text-xs text-slate-500 mt-0.5">{copy.thisSession}</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-cyan-400">{todaySession?.completedPomodoros ?? 0}</p>
-          <p className="text-xs text-slate-500 mt-0.5">Today total</p>
+          <p className="text-xs text-slate-500 mt-0.5">{copy.todayTotal}</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-purple-400">{todaySession ? Math.round(todaySession.totalMinutes) : 0}m</p>
-          <p className="text-xs text-slate-500 mt-0.5">Focus time today</p>
+          <p className="text-xs text-slate-500 mt-0.5">{copy.focusTime}</p>
         </div>
       </div>
 
@@ -284,7 +305,7 @@ export default function FocusPage() {
         <div className="card">
           <div className="flex items-center gap-2 mb-3">
             <Trophy size={13} className="text-yellow-400" />
-            <p className="section-label">Session History</p>
+            <p className="section-label">{copy.history}</p>
           </div>
           <div className="space-y-2">
             {sessions.slice(0, 7).map(s => {
@@ -293,14 +314,14 @@ export default function FocusPage() {
                 <div key={s.date} className="flex items-center justify-between py-1.5 border-b border-slate-800 last:border-0">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs ${isToday ? 'text-cyan-400 font-semibold' : 'text-slate-400'}`}>
-                      {isToday ? 'Today' : new Date(s.date + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {isToday ? copy.today : new Date(s.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-xs text-slate-500">
                       {'🍅'.repeat(Math.min(s.completedPomodoros, 8))}{s.completedPomodoros > 8 ? ` +${s.completedPomodoros - 8}` : ''}
                     </span>
-                    <span className="text-[10px] text-slate-600 w-16 text-right">{s.totalMinutes}m focused</span>
+                    <span className="text-[10px] text-slate-600 w-16 text-right">{s.totalMinutes}m {copy.focused}</span>
                   </div>
                 </div>
               )
@@ -314,7 +335,7 @@ export default function FocusPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="card w-full max-w-sm space-y-4 border-slate-600/40">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-200 flex items-center gap-2"><Settings2 size={14} /> Timer Settings</p>
+              <p className="text-sm font-semibold text-slate-200 flex items-center gap-2"><Settings2 size={14} /> {copy.timerSettings}</p>
               <button onClick={() => setShowSettings(false)} className="text-slate-600 hover:text-slate-300"><X size={15} /></button>
             </div>
             {CONFIG_FIELDS.map(({ key, label, unit }) => (
@@ -331,8 +352,8 @@ export default function FocusPage() {
               </div>
             ))}
             <div className="flex gap-2 pt-2">
-              <button onClick={saveConfig} className="btn-primary flex-1 justify-center">Save</button>
-              <button onClick={() => setShowSettings(false)} className="btn-ghost">Cancel</button>
+              <button onClick={saveConfig} className="btn-primary flex-1 justify-center">{copy.save}</button>
+              <button onClick={() => setShowSettings(false)} className="btn-ghost">{copy.cancel}</button>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, Copy, Search, Code2, ChevronDown, Eye, EyeOff, Star, Pencil, Layers, Download, Upload, X, BarChart2 } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import toast from 'react-hot-toast'
@@ -37,6 +38,7 @@ const LANGUAGES = [
 ]
 
 export default function SnippetsPage() {
+  const { language, locale } = useLanguage()
   const [snippets, setSnippets] = useState<Snippet[]>([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
@@ -123,24 +125,24 @@ export default function SnippetsPage() {
 
   const add = () => {
     if (!form.title.trim() || !form.code.trim()) {
-      toast.error('Title and code are required')
+      toast.error(language === 'nl' ? 'Titel en code zijn verplicht' : 'Title and code are required')
       return
     }
     const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
     save([{ ...form, tags, id: crypto.randomUUID(), createdAt: Date.now() }, ...snippets])
     setForm({ title: '', code: '', language: 'typescript', description: '', tags: '' })
     setAdding(false)
-    toast.success('Snippet saved!')
+    toast.success(language === 'nl' ? 'Snippet opgeslagen!' : 'Snippet saved!')
   }
 
   const copy = (code: string) => {
     navigator.clipboard.writeText(code)
-    toast.success('Copied to clipboard!')
+    toast.success(language === 'nl' ? 'Gekopieerd naar klembord!' : 'Copied to clipboard!')
   }
 
   const remove = (id: string) => {
     save(snippets.filter(s => s.id !== id))
-    toast('Snippet removed', { icon: '🗑️' })
+    toast(language === 'nl' ? 'Snippet verwijderd' : 'Snippet removed', { icon: '🗑️' })
   }
 
   const togglePin = (id: string) => {
@@ -149,7 +151,7 @@ export default function SnippetsPage() {
 
   const duplicate = (snippet: Snippet) => {
     save([{ ...snippet, id: crypto.randomUUID(), title: `${snippet.title} (copy)`, pinned: false, createdAt: Date.now() }, ...snippets])
-    toast.success('Snippet duplicated!')
+    toast.success(language === 'nl' ? 'Snippet gedupliceerd!' : 'Snippet duplicated!')
   }
 
   const startEdit = (snippet: Snippet) => {
@@ -158,11 +160,11 @@ export default function SnippetsPage() {
   }
 
   const updateSnippet = (id: string) => {
-    if (!editForm.title.trim() || !editForm.code.trim()) { toast.error('Title and code are required'); return }
+    if (!editForm.title.trim() || !editForm.code.trim()) { toast.error(language === 'nl' ? 'Titel en code zijn verplicht' : 'Title and code are required'); return }
     const tags = editForm.tags.split(',').map(t => t.trim()).filter(Boolean)
     save(snippets.map(s => s.id === id ? { ...s, ...editForm, tags } : s))
     setEditing(null)
-    toast.success('Snippet updated!')
+    toast.success(language === 'nl' ? 'Snippet bijgewerkt!' : 'Snippet updated!')
   }
 
   const toggleCollapse = (id: string) => {
@@ -177,7 +179,7 @@ export default function SnippetsPage() {
     a.download = `snippets-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('Exported!')
+    toast.success(language === 'nl' ? 'Geëxporteerd!' : 'Exported!')
   }
 
   const importFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,8 +195,8 @@ export default function SnippetsPage() {
           if (!merged.find(x => x.id === s.id)) { merged.push(s); count++ }
         }
         save(merged)
-        toast.success(`Imported ${count} snippet${count !== 1 ? 's' : ''}!`)
-      } catch { toast.error('Invalid JSON file') }
+        toast.success(language === 'nl' ? `${count} snippet${count !== 1 ? 's' : ''} geïmporteerd!` : `Imported ${count} snippet${count !== 1 ? 's' : ''}!`)
+      } catch { toast.error(language === 'nl' ? 'Ongeldig JSON-bestand' : 'Invalid JSON file') }
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -218,11 +220,42 @@ export default function SnippetsPage() {
       return a.title.localeCompare(b.title)
     })
 
+  const ui = {
+    title: language === 'nl' ? '🧩 Snippets' : '🧩 Snippets',
+    subtitle: language === 'nl' ? 'Sla codefragmenten op en hergebruik ze direct' : 'Save & reuse code fragments instantly',
+    search: language === 'nl' ? 'Zoek snippets… (titel, taal, tag)' : 'Search snippets… (title, language, tag)',
+    newSnippet: language === 'nl' ? 'Nieuwe snippet' : 'New Snippet',
+    allLanguages: language === 'nl' ? 'Alle talen' : 'All languages',
+    newestFirst: language === 'nl' ? 'Nieuwste eerst' : 'Newest first',
+    oldestFirst: language === 'nl' ? 'Oudste eerst' : 'Oldest first',
+    export: language === 'nl' ? 'Exporteer' : 'Export',
+    import: language === 'nl' ? 'Importeer' : 'Import',
+    addTitle: language === 'nl' ? 'Nieuwe snippet' : 'New Snippet',
+    titlePlaceholder: language === 'nl' ? 'Titel…' : 'Title…',
+    descPlaceholder: language === 'nl' ? 'Korte beschrijving (optioneel)…' : 'Short description (optional)…',
+    tagsPlaceholder: language === 'nl' ? 'Tags (komma-gescheiden, bijv. auth, utils)…' : 'Tags (comma-separated, e.g. auth, utils)…',
+    codePlaceholder: language === 'nl' ? 'Plak hier je code…' : 'Paste your code here…',
+    saveSnippet: language === 'nl' ? 'Snippet opslaan' : 'Save Snippet',
+    cancel: language === 'nl' ? 'Annuleren' : 'Cancel',
+    noResults: language === 'nl' ? 'Geen resultaten gevonden' : 'No results found',
+    noSnippets: language === 'nl' ? 'Nog geen snippets — sla je eerste op!' : 'No snippets yet — save your first one!',
+    livePreview: language === 'nl' ? 'Live preview' : 'Live preview',
+    collapseCode: language === 'nl' ? 'Code inklappen' : 'Collapse code',
+    expandCode: language === 'nl' ? 'Code uitklappen' : 'Expand code',
+    edit: language === 'nl' ? 'Bewerken' : 'Edit',
+    duplicate: language === 'nl' ? 'Dupliceren' : 'Duplicate',
+    copyCode: language === 'nl' ? 'Code kopiëren' : 'Copy code',
+    delete: language === 'nl' ? 'Verwijderen' : 'Delete',
+    editSnippet: language === 'nl' ? 'Snippet bewerken' : 'Edit Snippet',
+    description: language === 'nl' ? 'Beschrijving…' : 'Description…',
+    saveChanges: language === 'nl' ? 'Wijzigingen opslaan' : 'Save changes',
+  }
+
   return (
     <div className="max-w-4xl">
       <div className="mb-6">
-        <h1 className="page-title">🧩 Snippets</h1>
-        <p className="page-subtitle">Save & reuse code fragments instantly</p>
+        <h1 className="page-title">{ui.title}</h1>
+        <p className="page-subtitle">{ui.subtitle}</p>
       </div>
 
       {/* Toolbar */}
@@ -231,13 +264,13 @@ export default function SnippetsPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             className="input !pl-10"
-            placeholder="Search snippets… (title, language, tag)"
+            placeholder={ui.search}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <button onClick={() => setAdding(!adding)} className="btn-primary">
-          <Plus size={14} /> New Snippet
+          <Plus size={14} /> {ui.newSnippet}
         </button>
       </div>
 
@@ -245,15 +278,15 @@ export default function SnippetsPage() {
       <div className="flex gap-2 mb-6 flex-wrap items-center">
         <div className="relative">
           <select className="input text-xs appearance-none pr-6 cursor-pointer" value={filterLang} onChange={e => setFilterLang(e.target.value)}>
-            <option value="all">All languages</option>
+            <option value="all">{ui.allLanguages}</option>
             {usedLangs.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
           <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
         </div>
         <div className="relative">
           <select className="input text-xs appearance-none pr-6 cursor-pointer" value={sortBy} onChange={e => setSortBy(e.target.value as 'newest' | 'oldest' | 'az')}>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
+            <option value="newest">{ui.newestFirst}</option>
+            <option value="oldest">{ui.oldestFirst}</option>
             <option value="az">A – Z</option>
           </select>
           <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
@@ -261,10 +294,10 @@ export default function SnippetsPage() {
         <span className="text-[10px] text-slate-600 ml-1">{filtered.length} snippet{filtered.length !== 1 ? 's' : ''}</span>
         <div className="flex-1" />
         <button onClick={exportAll} className="btn-ghost text-xs gap-1.5" title="Export all snippets as JSON">
-          <Download size={12} /> Export
+          <Download size={12} /> {ui.export}
         </button>
         <button onClick={() => importRef.current?.click()} className="btn-ghost text-xs gap-1.5" title="Import snippets from JSON">
-          <Upload size={12} /> Import
+          <Upload size={12} /> {ui.import}
         </button>
         <input ref={importRef} type="file" accept=".json" className="hidden" onChange={importFile} />
       </div>
@@ -272,11 +305,11 @@ export default function SnippetsPage() {
       {/* Add form */}
       {adding && (
         <div className="card mb-6 space-y-3 border-cyan-500/20">
-          <p className="section-label">New Snippet</p>
+          <p className="section-label">{ui.addTitle}</p>
           <div className="grid grid-cols-2 gap-3">
             <input
               className="input"
-              placeholder="Title…"
+              placeholder={ui.titlePlaceholder}
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             />
@@ -293,25 +326,25 @@ export default function SnippetsPage() {
           </div>
           <input
             className="input"
-            placeholder="Short description (optional)…"
+            placeholder={ui.descPlaceholder}
             value={form.description}
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
           />
           <input
             className="input"
-            placeholder="Tags (comma-separated, e.g. auth, utils)…"
+            placeholder={ui.tagsPlaceholder}
             value={form.tags}
             onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
           />
           <textarea
             className="input font-mono text-xs min-h-[140px] resize-y"
-            placeholder="Paste your code here…"
+            placeholder={ui.codePlaceholder}
             value={form.code}
             onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
           />
           <div className="flex gap-2">
-            <button onClick={add} className="btn-primary">Save Snippet</button>
-            <button onClick={() => setAdding(false)} className="btn-ghost">Cancel</button>
+            <button onClick={add} className="btn-primary">{ui.saveSnippet}</button>
+            <button onClick={() => setAdding(false)} className="btn-ghost">{ui.cancel}</button>
           </div>
         </div>
       )}
@@ -321,7 +354,7 @@ export default function SnippetsPage() {
         {filtered.length === 0 && (
           <div className="card text-center py-12 text-slate-600">
             <Code2 size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">{search ? 'No results found' : 'No snippets yet — save your first one!'}</p>
+            <p className="text-sm">{search ? ui.noResults : ui.noSnippets}</p>
           </div>
         )}
         {filtered.map(snippet => (
@@ -348,27 +381,27 @@ export default function SnippetsPage() {
                 <span className="tag bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px]">
                   {snippet.language}
                 </span>
-                <button onClick={() => togglePin(snippet.id)} className={`btn-ghost py-1 px-1.5 ${snippet.pinned ? 'text-yellow-400' : ''}`} title={snippet.pinned ? 'Unpin' : 'Pin'}>
+                <button onClick={() => togglePin(snippet.id)} className={`btn-ghost py-1 px-1.5 ${snippet.pinned ? 'text-yellow-400' : ''}`} title={snippet.pinned ? (language === 'nl' ? 'Losmaken' : 'Unpin') : (language === 'nl' ? 'Vastzetten' : 'Pin')}>
                   <Star size={11} className={snippet.pinned ? 'fill-yellow-400' : ''} />
                 </button>
                 {PREVIEWABLE.has(snippet.language) && (
-                  <button onClick={() => togglePreview(snippet.id)} className={`btn-ghost py-1 px-1.5 ${previews.has(snippet.id) ? 'text-cyan-400' : ''}`} title="Live preview">
+                  <button onClick={() => togglePreview(snippet.id)} className={`btn-ghost py-1 px-1.5 ${previews.has(snippet.id) ? 'text-cyan-400' : ''}`} title={ui.livePreview}>
                     {previews.has(snippet.id) ? <EyeOff size={11} /> : <Eye size={11} />}
                   </button>
                 )}
-                <button onClick={() => toggleCollapse(snippet.id)} className="btn-ghost py-1 px-1.5" title={collapsed.has(snippet.id) ? 'Expand code' : 'Collapse code'}>
+                <button onClick={() => toggleCollapse(snippet.id)} className="btn-ghost py-1 px-1.5" title={collapsed.has(snippet.id) ? ui.expandCode : ui.collapseCode}>
                   <BarChart2 size={11} className={collapsed.has(snippet.id) ? 'text-slate-600' : ''} />
                 </button>
-                <button onClick={() => startEdit(snippet)} className={`btn-ghost py-1 px-1.5 ${editing === snippet.id ? 'text-cyan-400' : ''}`} title="Edit">
+                <button onClick={() => startEdit(snippet)} className={`btn-ghost py-1 px-1.5 ${editing === snippet.id ? 'text-cyan-400' : ''}`} title={ui.edit}>
                   <Pencil size={11} />
                 </button>
-                <button onClick={() => duplicate(snippet)} className="btn-ghost py-1 px-1.5" title="Duplicate">
+                <button onClick={() => duplicate(snippet)} className="btn-ghost py-1 px-1.5" title={ui.duplicate}>
                   <Layers size={11} />
                 </button>
-                <button onClick={() => copy(snippet.code)} className="btn-ghost py-1 px-1.5" title="Copy code">
+                <button onClick={() => copy(snippet.code)} className="btn-ghost py-1 px-1.5" title={ui.copyCode}>
                   <Copy size={11} />
                 </button>
-                <button onClick={() => remove(snippet.id)} className="text-slate-700 hover:text-red-400 transition-colors p-1" title="Delete">
+                <button onClick={() => remove(snippet.id)} className="text-slate-700 hover:text-red-400 transition-colors p-1" title={ui.delete}>
                   <Trash2 size={12} />
                 </button>
               </div>
@@ -393,7 +426,7 @@ export default function SnippetsPage() {
               <div className="mt-3 rounded-lg overflow-hidden border border-cyan-500/20">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/5 border-b border-cyan-500/20">
                   <Eye size={11} className="text-cyan-400" />
-                  <span className="text-[10px] text-cyan-400 font-medium">Live Preview</span>
+                  <span className="text-[10px] text-cyan-400 font-medium">{ui.livePreview}</span>
                 </div>
                 <iframe
                   srcDoc={buildPreview(snippet.language, snippet.code)}
@@ -409,7 +442,7 @@ export default function SnippetsPage() {
             {editing === snippet.id && (
               <div className="mt-3 space-y-2 border-t border-slate-700/50 pt-3">
                 <div className="flex items-center justify-between">
-                  <p className="section-label">Edit Snippet</p>
+                  <p className="section-label">{ui.editSnippet}</p>
                   <button onClick={() => setEditing(null)} className="text-slate-600 hover:text-slate-400"><X size={13} /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -421,12 +454,12 @@ export default function SnippetsPage() {
                     <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                   </div>
                 </div>
-                <input className="input text-xs" placeholder="Description…" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
-                <input className="input text-xs" placeholder="Tags (comma-separated)…" value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))} />
+                <input className="input text-xs" placeholder={ui.description} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                <input className="input text-xs" placeholder={language === 'nl' ? 'Tags (komma-gescheiden)…' : 'Tags (comma-separated)…'} value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))} />
                 <textarea className="input font-mono text-xs min-h-[120px] resize-y" value={editForm.code} onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))} />
                 <div className="flex gap-2">
-                  <button onClick={() => updateSnippet(snippet.id)} className="btn-primary text-xs py-1">Save changes</button>
-                  <button onClick={() => setEditing(null)} className="btn-ghost text-xs py-1">Cancel</button>
+                  <button onClick={() => updateSnippet(snippet.id)} className="btn-primary text-xs py-1">{ui.saveChanges}</button>
+                  <button onClick={() => setEditing(null)} className="btn-ghost text-xs py-1">{ui.cancel}</button>
                 </div>
               </div>
             )}
@@ -436,7 +469,7 @@ export default function SnippetsPage() {
               <span className="text-[10px] text-slate-700">
                 {snippet.code.split('\n').length} lines · {snippet.code.length} chars
               </span>
-              <span className="text-[10px] text-slate-700">{new Date(snippet.createdAt).toLocaleString()}</span>
+              <span className="text-[10px] text-slate-700">{new Date(snippet.createdAt).toLocaleString(locale)}</span>
             </div>
           </div>
         ))}

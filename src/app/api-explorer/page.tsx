@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, RotateCcw, Copy, Zap, MessageSquare, Key, ChevronDown, ChevronUp, History, X } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 type Preset = { label: string; url: string | (() => string); desc: string; emoji: string }
@@ -184,6 +185,7 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string }
 type HistoryEntry = { url: string; status: number; time: number; size: number; ts: number }
 
 export default function APIExplorerPage() {
+  const { language } = useLanguage()
   const [url, setUrl] = useState('')
   const [response, setResponse] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -214,7 +216,7 @@ export default function APIExplorerPage() {
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const call = async (endpoint = url) => {
-    if (!endpoint.trim()) { toast.error('Enter a URL'); return }
+    if (!endpoint.trim()) { toast.error(language === 'nl' ? 'Voer een URL in' : 'Enter a URL'); return }
     setLoading(true)
     setResponse(null)
     const t0 = performance.now()
@@ -246,16 +248,34 @@ export default function APIExplorerPage() {
     }
   }
 
-  const copy = () => {
+  const copyResponse = () => {
     if (response) {
       navigator.clipboard.writeText(response)
-      toast.success('Copied!')
+      toast.success(language === 'nl' ? 'Gekopieerd!' : 'Copied!')
     }
+  }
+
+  const ui = {
+    title: language === 'nl' ? '🌐 API Verkenner' : '🌐 API Explorer',
+    subtitle: language === 'nl' ? 'Doe snelle API-calls en inspecteer responses' : 'Fire off quick API calls and inspect responses',
+    send: language === 'nl' ? 'Stuur' : 'Send',
+    requestHistory: language === 'nl' ? 'Requestgeschiedenis' : 'Request history',
+    recent: language === 'nl' ? 'Recent' : 'Recent',
+    clear: language === 'nl' ? 'Wissen' : 'Clear',
+    quickPresets: language === 'nl' ? 'Snelle Presets' : 'Quick Presets',
+    response: language === 'nl' ? 'Response' : 'Response',
+    callingApi: language === 'nl' ? 'API aanroepen…' : 'Calling API…',
+    pickPreset: language === 'nl' ? 'Kies een preset of voer een URL in en druk op Stuur' : 'Pick a preset or enter a URL and hit Send',
+    manageSettings: language === 'nl' ? '⚙️ Beheer in Instellingen →' : '⚙️ Manage in Settings →',
+    keyLocal: language === 'nl' ? 'Key wordt alleen lokaal bewaard in de browser — nooit opgeslagen op een server.' : 'Key is stored only locally in the browser — never on a server.',
+    thinking: language === 'nl' ? 'Denken…' : 'Thinking…',
+    startChat: language === 'nl' ? 'Stuur een bericht om te beginnen…' : 'Send a message to get started…',
+    messagePlaceholder: language === 'nl' ? 'Typ een bericht…' : 'Type a message…',
   }
 
   const sendChat = async () => {
     if (!chatInput.trim()) return
-    if (!apiKey.trim()) { toast.error('Voer eerst een Groq API key in'); return }
+    if (!apiKey.trim()) { toast.error(language === 'nl' ? 'Voer eerst een Groq API key in' : 'Enter a Groq API key first'); return }
     const newMsg: ChatMsg = { role: 'user', content: chatInput.trim() }
     const updated = [...messages, newMsg]
     setMessages(updated)
@@ -272,7 +292,7 @@ export default function APIExplorerPage() {
       const reply = data.choices?.[0]?.message?.content ?? '(no response)'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Chat failed')
+      toast.error(err instanceof Error ? err.message : (language === 'nl' ? 'Chat mislukt' : 'Chat failed'))
     } finally {
       setChatLoading(false)
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
@@ -282,8 +302,8 @@ export default function APIExplorerPage() {
   return (
     <div className="max-w-4xl">
       <div className="mb-6">
-        <h1 className="page-title">🌐 API Explorer</h1>
-        <p className="page-subtitle">Fire off quick API calls and inspect responses</p>
+        <h1 className="page-title">{ui.title}</h1>
+        <p className="page-subtitle">{ui.subtitle}</p>
       </div>
 
       {/* Tabs */}
@@ -317,12 +337,12 @@ export default function APIExplorerPage() {
             ) : (
               <Send size={14} />
             )}
-            Send
+            {ui.send}
           </button>
           <button
             onClick={() => setShowHistory(v => !v)}
             className={`btn-ghost px-2.5 ${showHistory ? 'text-cyan-400' : ''}`}
-            title="Request history"
+            title={ui.requestHistory}
           >
             <History size={14} />
           </button>
@@ -332,9 +352,9 @@ export default function APIExplorerPage() {
         {showHistory && history.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-700/40">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Recent ({history.length})</p>
+              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{ui.recent} ({history.length})</p>
               <button onClick={() => { setHistory([]); localStorage.removeItem('api_history') }} className="text-[10px] text-slate-700 hover:text-red-400 flex items-center gap-1">
-                <X size={10} /> Clear
+                <X size={10} /> {ui.clear}
               </button>
             </div>
             <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -367,7 +387,7 @@ export default function APIExplorerPage() {
               </span>
             )}
             {response && (
-              <button onClick={copy} className="ml-auto btn-ghost py-0.5 px-2">
+              <button onClick={copyResponse} className="ml-auto btn-ghost py-0.5 px-2">
                 <Copy size={11} /> Copy
               </button>
             )}
@@ -378,7 +398,7 @@ export default function APIExplorerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Presets */}
         <div className="lg:col-span-2">
-          <p className="section-label mb-3">Quick Presets</p>
+          <p className="section-label mb-3">{ui.quickPresets}</p>
           <div className="space-y-2 overflow-y-auto max-h-[520px] pr-1">
             {PRESETS.map(p => (
               <button
@@ -401,11 +421,11 @@ export default function APIExplorerPage() {
 
         {/* Response */}
         <div className="lg:col-span-3">
-          <p className="section-label mb-3">Response</p>
+          <p className="section-label mb-3">{ui.response}</p>
           <div className="card min-h-[500px] font-mono text-xs">
             {loading ? (
               <div className="flex items-center justify-center h-40 text-slate-600">
-                <RotateCcw size={20} className="animate-spin mr-2" /> Calling API…
+                <RotateCcw size={20} className="animate-spin mr-2" /> {ui.callingApi}
               </div>
             ) : response ? (
               <>
@@ -443,7 +463,7 @@ export default function APIExplorerPage() {
             ) : (
               <div className="flex flex-col items-center justify-center h-40 text-slate-700">
                 <Send size={24} className="mb-2 opacity-30" />
-                <p className="text-sm">Pick a preset or enter a URL and hit Send</p>
+                <p className="text-sm">{ui.pickPreset}</p>
               </div>
             )}
           </div>
@@ -458,7 +478,7 @@ export default function APIExplorerPage() {
           <div className="card">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-slate-300 flex items-center gap-2"><Key size={13} className="text-cyan-400" /> Groq API Key</p>
-              <a href="/settings" className="text-xs text-cyan-500 hover:text-cyan-300">⚙️ Beheer in Settings →</a>
+              <a href="/settings" className="text-xs text-cyan-500 hover:text-cyan-300">{ui.manageSettings}</a>
             </div>
             <div className="flex gap-2 mb-2">
               <div className="relative flex-1">
@@ -486,14 +506,14 @@ export default function APIExplorerPage() {
                 <option value="gemma2-9b-it">Gemma 2 9B</option>
               </select>
             </div>
-            <p className="text-[10px] text-slate-600">Key wordt alleen lokaal bewaard in de browser — nooit opgeslagen op een server.</p>
+            <p className="text-[10px] text-slate-600">{ui.keyLocal}</p>
           </div>
 
           {/* Messages */}
           <div className="card min-h-[320px] max-h-[480px] overflow-y-auto space-y-3 flex flex-col">
             {messages.length === 0 && (
               <div className="flex-1 flex items-center justify-center text-slate-700 text-sm">
-                Stuur een bericht om te beginnen…
+                {ui.startChat}
               </div>
             )}
             {messages.map((m, i) => (
@@ -510,7 +530,7 @@ export default function APIExplorerPage() {
             {chatLoading && (
               <div className="flex justify-start">
                 <div className="bg-[#141414] border border-[#1a1a1a] rounded-xl px-3 py-2 text-slate-500 text-sm flex items-center gap-2">
-                  <RotateCcw size={12} className="animate-spin" /> Denken…
+                  <RotateCcw size={12} className="animate-spin" /> {ui.thinking}
                 </div>
               </div>
             )}
@@ -521,17 +541,17 @@ export default function APIExplorerPage() {
           <div className="flex gap-2">
             <input
               className="input flex-1"
-              placeholder="Typ een bericht…"
+              placeholder={ui.messagePlaceholder}
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
             />
             <button onClick={sendChat} disabled={chatLoading} className="btn-primary">
               {chatLoading ? <RotateCcw size={14} className="animate-spin" /> : <Send size={14} />}
-              Stuur
+              {ui.send}
             </button>
             {messages.length > 0 && (
-              <button onClick={() => { setMessages([]); localStorage.removeItem('chat_messages') }} className="btn-ghost">Wissen</button>
+              <button onClick={() => { setMessages([]); localStorage.removeItem('chat_messages') }} className="btn-ghost">{ui.clear}</button>
             )}
           </div>
         </div>

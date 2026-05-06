@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { useLanguage } from '@/components/LanguageProvider'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -22,22 +24,28 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/',              label: 'Dashboard',    icon: LayoutDashboard, color: 'text-cyan-400' },
-  { href: '/todo',          label: 'Todo',         icon: CheckSquare,     color: 'text-green-400' },
-  { href: '/snippets',      label: 'Snippets',     icon: Code2,           color: 'text-purple-400' },
-  { href: '/notes',         label: 'Notes',        icon: FileText,        color: 'text-yellow-400' },
-  { href: '/focus',         label: 'Focus Timer',   icon: Timer,           color: 'text-red-400' },
-  { href: '/habits',        label: 'Habit Tracker',  icon: Heart,        color: 'text-rose-400'   },
-  { href: '/pdf-editor',    label: 'PDF Editor',     icon: ScrollText,   color: 'text-amber-400'  },
-  { href: '/weather',       label: 'Weather',        icon: CloudSun,     color: 'text-sky-400'    },
-  { href: '/github',        label: 'GitHub Stats', icon: Github,          color: 'text-slate-300' },
-  { href: '/api-explorer',  label: 'API Explorer', icon: Globe,           color: 'text-orange-400' },
-  { href: '/settings',       label: 'Settings',     icon: Settings,        color: 'text-slate-400' },
+  { href: '/', labels: { en: 'Dashboard', nl: 'Dashboard' }, icon: LayoutDashboard, color: 'text-cyan-400' },
+  { href: '/todo', labels: { en: 'Todo', nl: 'Taken' }, icon: CheckSquare, color: 'text-green-400' },
+  { href: '/snippets', labels: { en: 'Snippets', nl: 'Snippets' }, icon: Code2, color: 'text-purple-400' },
+  { href: '/notes', labels: { en: 'Notes', nl: 'Notities' }, icon: FileText, color: 'text-yellow-400' },
+  { href: '/focus', labels: { en: 'Focus Timer', nl: 'Focus Timer' }, icon: Timer, color: 'text-red-400' },
+  { href: '/habits', labels: { en: 'Habit Tracker', nl: 'Gewoonte Tracker' }, icon: Heart, color: 'text-rose-400' },
+  { href: '/pdf-editor', labels: { en: 'PDF Editor', nl: 'PDF Editor' }, icon: ScrollText, color: 'text-amber-400' },
+  { href: '/weather', labels: { en: 'Weather', nl: 'Weer' }, icon: CloudSun, color: 'text-sky-400' },
+  { href: '/github', labels: { en: 'GitHub Stats', nl: 'GitHub Statistieken' }, icon: Github, color: 'text-slate-300' },
+  { href: '/api-explorer', labels: { en: 'API Explorer', nl: 'API Verkenner' }, icon: Globe, color: 'text-orange-400' },
+  { href: '/settings', labels: { en: 'Settings', nl: 'Instellingen' }, icon: Settings, color: 'text-slate-400' },
 ]
 
 export default function Sidebar() {
   const path = usePathname()
   const [open, setOpen] = useState(false)
+  const { language } = useLanguage()
+  const copy = {
+    workspace: language === 'nl' ? 'Werkruimte' : 'Workspace',
+    openGithub: language === 'nl' ? 'Open GitHub' : 'Open GitHub',
+    toggleMenu: language === 'nl' ? 'Menu wisselen' : 'Toggle menu',
+  }
 
   // Close sidebar on route change (mobile)
   useEffect(() => { setOpen(false) }, [path])
@@ -77,9 +85,10 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-        <p className="section-label px-2 mb-3">Workspace</p>
-        {NAV.map(({ href, label, icon: Icon, color }) => {
+        <p className="section-label px-2 mb-3">{copy.workspace}</p>
+        {NAV.map(({ href, labels, icon: Icon, color }) => {
           const active = path === href
+          const label = labels[language]
           return (
             <Link
               key={href}
@@ -107,8 +116,11 @@ export default function Sidebar() {
           className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
         >
           <ExternalLink size={11} />
-          Open GitHub
+          {copy.openGithub}
         </a>
+        <div className="mt-3">
+          <LanguageSwitcher compact />
+        </div>
       </div>
     </aside>
   )
@@ -120,7 +132,7 @@ export default function Sidebar() {
         <button
           onClick={() => setOpen(v => !v)}
           className="text-slate-400 hover:text-white transition-colors p-1"
-          aria-label="Toggle menu"
+          aria-label={copy.toggleMenu}
         >
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>

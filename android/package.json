@@ -1,0 +1,22 @@
+{
+  "name": "android",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "sync": "npx cap sync android",
+    "open": "npx cap open android",
+    "apk:release": "powershell -ExecutionPolicy Bypass -File .\\build-android.ps1 -Target apk",
+    "aab:release": "powershell -ExecutionPolicy Bypass -File .\\build-android.ps1 -Target aab",
+    "build:all": "powershell -ExecutionPolicy Bypass -File .\\build-android.ps1 -Target both"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1"
+  }
+}

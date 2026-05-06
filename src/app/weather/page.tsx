@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Wind, Droplets, Eye, RotateCcw, MapPin, Star, Gauge, Cloud, Sunrise, Sunset, Navigation, Thermometer } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import toast from 'react-hot-toast'
 
@@ -154,6 +155,7 @@ const DAY_PERIODS = [
 ]
 
 export default function WeatherPage() {
+  const { language } = useLanguage()
   const [city, setCity] = useState('')
   const [location, setLocation] = useState<GeoResult | null>(null)
   const [weather, setWeather] = useState<WeatherData | null>(null)
@@ -195,11 +197,11 @@ export default function WeatherPage() {
       setLastUpdated(new Date())
       fetchAQI(lat, lon)
     } catch {
-      toast.error('Failed to fetch weather data')
+      toast.error(language === 'nl' ? 'Weerdata ophalen mislukt' : 'Failed to fetch weather data')
     } finally {
       setLoading(false)
     }
-  }, [fetchAQI])
+  }, [fetchAQI, language])
 
   const searchCity = async () => {
     if (!city.trim()) return
@@ -210,10 +212,10 @@ export default function WeatherPage() {
       if (data.results?.length) {
         setGeoResults(data.results)
       } else {
-        toast.error('City not found')
+        toast.error(language === 'nl' ? 'Stad niet gevonden' : 'City not found')
       }
     } catch {
-      toast.error('Geocoding failed')
+      toast.error(language === 'nl' ? 'Geocoding mislukt' : 'Geocoding failed')
     }
   }
 
@@ -226,7 +228,7 @@ export default function WeatherPage() {
   }
 
   const detectLocation = () => {
-    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return }
+    if (!navigator.geolocation) { toast.error(language === 'nl' ? 'Geolocatie niet ondersteund' : 'Geolocation not supported'); return }
     setGeoLoading(true)
     navigator.geolocation.getCurrentPosition(
       async ({ coords: { latitude, longitude } }) => {
@@ -260,9 +262,20 @@ export default function WeatherPage() {
         ? prev.filter(c => !(c.name === geo.name && c.country === geo.country))
         : [...prev, geo].slice(0, 8)
       localStorage.setItem('weather_saved', JSON.stringify(next))
-      toast(exists ? 'Removed from favourites' : '⭐ Added to favourites')
+      toast(exists ? (language === 'nl' ? 'Verwijderd uit favorieten' : 'Removed from favourites') : (language === 'nl' ? '⭐ Toegevoegd aan favorieten' : '⭐ Added to favourites'))
       return next
     })
+  }
+
+  const copy = {
+    title: language === 'nl' ? '🌤️ Weer' : '🌤️ Weather',
+    subtitle: language === 'nl' ? 'Realtime weer via Open-Meteo (geen API key nodig)' : 'Real-time weather via Open-Meteo (no API key needed)',
+    search: language === 'nl' ? 'Zoek stad…' : 'Search city…',
+    useMyLocation: language === 'nl' ? 'Gebruik mijn locatie' : 'Use my location',
+    searchButton: language === 'nl' ? 'Zoek' : 'Search',
+    refresh: language === 'nl' ? 'Verversen' : 'Refresh',
+    removeFavourite: language === 'nl' ? 'Verwijder uit favorieten' : 'Remove from favourites',
+    saveCity: language === 'nl' ? 'Stad opslaan' : 'Save city',
   }
 
   const isSaved = (geo: GeoResult | null) =>
@@ -295,8 +308,8 @@ export default function WeatherPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="page-title">🌤️ Weather</h1>
-          <p className="page-subtitle">Real-time weather via Open-Meteo (no API key needed)</p>
+          <h1 className="page-title">{copy.title}</h1>
+          <p className="page-subtitle">{copy.subtitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -314,7 +327,7 @@ export default function WeatherPage() {
             <button
               onClick={() => fetchWeather(location.latitude, location.longitude)}
               className="btn-ghost px-2 py-1"
-              title="Refresh"
+              title={copy.refresh}
               disabled={loading}
             >
               <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
@@ -330,7 +343,7 @@ export default function WeatherPage() {
             <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
             <input
               className="input !pl-10"
-              placeholder="Search city…"
+              placeholder={copy.search}
               value={city}
               onChange={e => setCity(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && searchCity()}
@@ -339,13 +352,13 @@ export default function WeatherPage() {
           <button
             onClick={detectLocation}
             className="btn-ghost px-3"
-            title="Use my location"
+            title={copy.useMyLocation}
             disabled={geoLoading}
           >
             {geoLoading ? <RotateCcw size={14} className="animate-spin" /> : <Navigation size={14} />}
           </button>
           <button onClick={searchCity} className="btn-primary">
-            <Search size={14} /> Search
+            <Search size={14} /> {copy.searchButton}
           </button>
         </div>
         {/* Dropdown */}
@@ -415,7 +428,7 @@ export default function WeatherPage() {
               <button
                 onClick={() => toggleSave(location)}
                 className="ml-auto btn-ghost px-2 py-1"
-                title={isSaved(location) ? 'Remove from favourites' : 'Save city'}
+                title={isSaved(location) ? copy.removeFavourite : copy.saveCity}
               >
                 <Star size={13} className={isSaved(location) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-600'} />
               </button>

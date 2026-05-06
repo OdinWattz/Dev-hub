@@ -7,6 +7,7 @@ import {
   ZoomIn, ZoomOut, MousePointer2, FileText, X, Eraser,
   Image as ImageIcon,
 } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function PDFEditorPage() {
+  const { language } = useLanguage()
   const [pages, setPages]       = useState<PageInfo[]>([])
   const [overlays, setOverlays] = useState<Overlay[]>([])
   const [curPage, setCurPage]   = useState(0)
@@ -116,14 +118,14 @@ export default function PDFEditorPage() {
       setOverlays([])
       setCurPage(0)
       setSelected(null)
-      toast.success(`Loaded ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''}`)
+      toast.success(language === 'nl' ? `${pdf.numPages} pagina${pdf.numPages > 1 ? 's' : ''} geladen` : `Loaded ${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''}`)
     } catch (e) {
       console.error(e)
-      toast.error('Could not render PDF — make sure it is not password-protected')
+      toast.error(language === 'nl' ? 'PDF renderen mislukt — controleer of het bestand niet met een wachtwoord is beveiligd' : 'Could not render PDF — make sure it is not password-protected')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [language])
 
   // ── Pointer handlers ──
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -217,7 +219,7 @@ export default function PDFEditorPage() {
   // ── Export ──
   const exportPDF = async () => {
     if (!pages.length) return
-    const tid = toast.loading('Exporting PDF…')
+    const tid = toast.loading(language === 'nl' ? 'PDF exporteren…' : 'Exporting PDF…')
     try {
       const { default: jsPDF } = await import('jspdf')
       const f  = pages[0]
@@ -276,21 +278,47 @@ export default function PDFEditorPage() {
 
       doc.save(`${pdfName || 'edited'}.pdf`)
       toast.dismiss(tid)
-      toast.success('PDF exported!')
+      toast.success(language === 'nl' ? 'PDF geëxporteerd!' : 'PDF exported!')
     } catch (err) {
       console.error(err)
       toast.dismiss(tid)
-      toast.error('Export failed')
+      toast.error(language === 'nl' ? 'Export mislukt' : 'Export failed')
     }
+  }
+
+  const copy = {
+    title: language === 'nl' ? 'PDF Editor' : 'PDF Editor',
+    subtitle: language === 'nl' ? 'Bewerk PDF’s lokaal — voeg tekst, afbeeldingen toe en wis content. Niets verlaat je apparaat.' : 'Edit PDFs locally — add text, images, erase content. Nothing leaves your device.',
+    loadingPages: language === 'nl' ? 'Pagina’s renderen…' : 'Rendering pages…',
+    drop: language === 'nl' ? 'Sleep hier een PDF heen of klik om te bladeren' : 'Drop a PDF here or click to browse',
+    localOnly: language === 'nl' ? '100% lokaal — verwerkt in je browser, nooit geüpload' : '100% local — processed in your browser, never uploaded anywhere',
+    choose: language === 'nl' ? 'Kies PDF' : 'Choose PDF',
+    dropPdf: language === 'nl' ? 'Sleep een PDF-bestand hierheen' : 'Drop a PDF file',
+    whatYouCanDo: language === 'nl' ? 'Wat je kunt doen' : 'What you can do',
+    select: language === 'nl' ? 'Selecteren' : 'Select',
+    addText: language === 'nl' ? 'Tekst toevoegen' : 'Add Text',
+    addImage: language === 'nl' ? 'Afbeelding toevoegen' : 'Add Image',
+    erase: language === 'nl' ? 'Wissen' : 'Erase',
+    delete: language === 'nl' ? 'Verwijderen' : 'Delete',
+    exportPdf: language === 'nl' ? 'Exporteer PDF' : 'Export PDF',
+    close: language === 'nl' ? 'Sluiten' : 'Close',
+    options: language === 'nl' ? 'opties' : 'options',
+    fontSize: language === 'nl' ? 'Lettergrootte (pt)' : 'Font size (pt)',
+    color: language === 'nl' ? 'Kleur' : 'Color',
+    bold: language === 'nl' ? 'Vet' : 'Bold',
+    editText: language === 'nl' ? 'Tekst bewerken' : 'Edit text',
+    positionSize: language === 'nl' ? 'Positie en grootte (%)' : 'Position & size (%)',
+    pageDimensions: language === 'nl' ? '% van pagina-afmetingen' : '% of page dimensions',
+    remove: language === 'nl' ? 'Verwijderen' : 'Remove',
   }
 
   // ── Upload view ──
   if (!pages.length) {
     return (
       <div className="max-w-2xl">
-        <h1 className="page-title">PDF Editor</h1>
+        <h1 className="page-title">{copy.title}</h1>
         <p className="page-subtitle mb-8">
-          Edit PDFs locally — add text, images, erase content. Nothing leaves your device.
+          {copy.subtitle}
         </p>
 
         <div
@@ -301,32 +329,32 @@ export default function PDFEditorPage() {
             e.preventDefault()
             const f = e.dataTransfer.files[0]
             if (f?.type === 'application/pdf') loadPDF(f)
-            else toast.error('Drop a PDF file')
+            else toast.error(copy.dropPdf)
           }}
         >
           {loading ? (
             <>
               <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-slate-400">Rendering pages…</p>
+              <p className="text-sm text-slate-400">{copy.loadingPages}</p>
             </>
           ) : (
             <>
               <FileText size={48} className="text-slate-600" />
               <div className="text-center">
-                <p className="text-slate-300 font-medium">Drop a PDF here or click to browse</p>
+                <p className="text-slate-300 font-medium">{copy.drop}</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  100% local — processed in your browser, never uploaded anywhere
+                  {copy.localOnly}
                 </p>
               </div>
               <button className="btn-primary flex items-center gap-2">
-                <Upload size={14} /> Choose PDF
+                <Upload size={14} /> {copy.choose}
               </button>
             </>
           )}
         </div>
 
         <div className="mt-6 card bg-slate-900/40 space-y-1.5">
-          <p className="text-xs font-semibold text-slate-400 mb-2">What you can do</p>
+          <p className="text-xs font-semibold text-slate-400 mb-2">{copy.whatYouCanDo}</p>
           {[
             ['🖱️', 'Select & move', 'Click overlays to select, drag to reposition'],
             ['T',  'Add text',     'Click anywhere on the page to place a text box; double-click to edit'],
@@ -350,10 +378,10 @@ export default function PDFEditorPage() {
 
   // ── Editor view ──
   const TOOLS: { t: Tool; icon: ReactNode; label: string }[] = [
-    { t: 'select', icon: <MousePointer2 size={13} />, label: 'Select' },
-    { t: 'text',   icon: <Type size={13} />,          label: 'Add Text' },
-    { t: 'image',  icon: <ImageIcon size={13} />,     label: 'Add Image' },
-    { t: 'erase',  icon: <Eraser size={13} />,        label: 'Erase' },
+    { t: 'select', icon: <MousePointer2 size={13} />, label: copy.select },
+    { t: 'text',   icon: <Type size={13} />,          label: copy.addText },
+    { t: 'image',  icon: <ImageIcon size={13} />,     label: copy.addImage },
+    { t: 'erase',  icon: <Eraser size={13} />,        label: copy.erase },
   ]
 
   return (
@@ -394,13 +422,13 @@ export default function PDFEditorPage() {
         <div className="flex items-center gap-1.5 ml-auto">
           {selected && (
             <button onClick={deleteSelected} className="btn-ghost px-2 text-red-400 text-xs flex items-center gap-1">
-              <Trash2 size={11} /> Delete
+              <Trash2 size={11} /> {copy.delete}
             </button>
           )}
           <button onClick={exportPDF} className="btn-primary text-xs flex items-center gap-1.5">
-            <Download size={13} /> Export PDF
+            <Download size={13} /> {copy.exportPdf}
           </button>
-          <button onClick={() => { setPages([]); setOverlays([]); setPdfName('') }} className="btn-ghost px-2" title="Close">
+          <button onClick={() => { setPages([]); setOverlays([]); setPdfName('') }} className="btn-ghost px-2" title={copy.close}>
             <X size={14} />
           </button>
         </div>
@@ -544,12 +572,12 @@ export default function PDFEditorPage() {
         {/* ── Properties panel ── */}
         {selOv && (
           <div className="w-44 shrink-0 space-y-3 overflow-y-auto">
-            <p className="section-label capitalize">{selOv.type} options</p>
+            <p className="section-label capitalize">{selOv.type} {copy.options}</p>
 
             {selOv.type === 'text' && (
               <>
                 <div>
-                  <p className="text-[10px] text-slate-600 mb-1">Font size (pt)</p>
+                  <p className="text-[10px] text-slate-600 mb-1">{copy.fontSize}</p>
                   <input
                     type="number" className="input w-full text-xs" min={6} max={144}
                     value={selOv.fontSize ?? 14}
@@ -557,7 +585,7 @@ export default function PDFEditorPage() {
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-600 mb-1">Color</p>
+                  <p className="text-[10px] text-slate-600 mb-1">{copy.color}</p>
                   <input
                     type="color"
                     className="w-full h-7 rounded border border-slate-700 bg-slate-800 cursor-pointer"
@@ -570,16 +598,16 @@ export default function PDFEditorPage() {
                     type="checkbox" checked={selOv.bold ?? false} className="accent-cyan-500"
                     onChange={e => updOv(selected!, { bold: e.target.checked })}
                   />
-                  Bold
+                  {copy.bold}
                 </label>
                 <button className="btn-ghost text-xs w-full" onClick={() => setEditingId(selected)}>
-                  Edit text
+                  {copy.editText}
                 </button>
               </>
             )}
 
             <div>
-              <p className="text-[10px] text-slate-600 mb-1.5">Position & size (%)</p>
+              <p className="text-[10px] text-slate-600 mb-1.5">{copy.positionSize}</p>
               <div className="grid grid-cols-2 gap-1">
                 {(['x', 'y', 'w', 'h'] as const).map(k => (
                   <div key={k}>
@@ -596,14 +624,14 @@ export default function PDFEditorPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-[9px] text-slate-700 mt-1">% of page dimensions</p>
+              <p className="text-[9px] text-slate-700 mt-1">{copy.pageDimensions}</p>
             </div>
 
             <button
               onClick={deleteSelected}
               className="w-full flex items-center justify-center gap-1.5 text-xs text-red-400 btn-ghost"
             >
-              <Trash2 size={11} /> Remove
+              <Trash2 size={11} /> {copy.remove}
             </button>
           </div>
         )}

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
+import { LanguageProvider } from '@/components/LanguageProvider'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
@@ -27,22 +28,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="DevHub" />
       </head>
       <body className="grid-bg min-h-screen antialiased">
-        <Sidebar />
-        <main className="md:ml-56 min-h-screen p-4 md:p-6 pt-16 md:pt-6">
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: '#0f1629',
-                color: '#e2e8f0',
-                border: '1px solid #1e2d3d',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '13px',
-              },
-            }}
-          />
-          {children}
-        </main>
+        <LanguageProvider>
+          <Sidebar />
+          <main className="md:ml-56 min-h-screen p-4 md:p-6 pt-16 md:pt-6">
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: '#0f1629',
+                  color: '#e2e8f0',
+                  border: '1px solid #1e2d3d',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '13px',
+                },
+              }}
+            />
+            {children}
+          </main>
+        </LanguageProvider>
       </body>
     </html>
   )

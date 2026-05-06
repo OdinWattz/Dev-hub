@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Check, Tag, ChevronDown, Search, Pencil, X, CheckCheck } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 type Priority = 'low' | 'medium' | 'high'
@@ -30,6 +31,7 @@ const PRIORITY_DOT: Record<Priority, string> = {
 const TAGS = ['bug', 'feature', 'refactor', 'docs', 'test', 'devops', 'idea', 'other']
 
 export default function TodoPage() {
+  const { language, locale } = useLanguage()
   const [todos, setTodos] = useState<Todo[]>([])
   const [text, setText] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
@@ -65,13 +67,13 @@ export default function TodoPage() {
     save([todo, ...todos])
     setText('')
     setDueDate('')
-    toast.success('Task added')
+    toast.success(language === 'nl' ? 'Taak toegevoegd' : 'Task added')
   }
 
   const clearDone = () => {
     const next = todos.filter(t => !t.done)
     save(next)
-    toast('Completed tasks cleared', { icon: '🧹' })
+    toast(language === 'nl' ? 'Voltooide taken gewist' : 'Completed tasks cleared', { icon: '🧹' })
   }
 
   const startEdit = (todo: Todo) => { setEditingId(todo.id); setEditText(todo.text) }
@@ -79,7 +81,7 @@ export default function TodoPage() {
     if (!editText.trim()) return
     save(todos.map(t => t.id === id ? { ...t, text: editText.trim() } : t))
     setEditingId(null)
-    toast.success('Updated')
+    toast.success(language === 'nl' ? 'Bijgewerkt' : 'Updated')
   }
 
   const isOverdue = (t: Todo) => !t.done && t.dueDate && new Date(t.dueDate) < new Date(new Date().toDateString())
@@ -89,7 +91,30 @@ export default function TodoPage() {
 
   const remove = (id: string) => {
     save(todos.filter(t => t.id !== id))
-    toast('Task removed', { icon: '🗑️' })
+    toast(language === 'nl' ? 'Taak verwijderd' : 'Task removed', { icon: '🗑️' })
+  }
+
+  const copy = {
+    title: language === 'nl' ? '📋 Taken' : '📋 Todo',
+    subtitle: language === 'nl' ? 'Houd je dev-taken en ideeën bij' : 'Track your dev tasks & ideas',
+    total: language === 'nl' ? 'totaal' : 'total',
+    open: language === 'nl' ? 'open' : 'open',
+    done: language === 'nl' ? 'klaar' : 'done',
+    progress: language === 'nl' ? 'Voortgang' : 'Progress',
+    placeholder: language === 'nl' ? 'Nieuwe dev-taak…' : 'New dev task…',
+    low: language === 'nl' ? 'Laag' : 'Low',
+    medium: language === 'nl' ? 'Middel' : 'Medium',
+    high: language === 'nl' ? 'Hoog' : 'High',
+    dueDate: language === 'nl' ? 'Deadline (optioneel)' : 'Due date (optional)',
+    addTask: language === 'nl' ? 'Taak toevoegen' : 'Add Task',
+    search: language === 'nl' ? 'Zoek taken…' : 'Search tasks…',
+    newest: language === 'nl' ? 'Nieuwste' : 'Newest',
+    priority: language === 'nl' ? 'Prioriteit' : 'Priority',
+    due: language === 'nl' ? 'Deadline' : 'Due date',
+    clearDone: language === 'nl' ? 'Wis voltooid' : 'Clear done',
+    noTasks: language === 'nl' ? 'Geen taken hier' : 'No tasks here',
+    save: language === 'nl' ? 'Opslaan' : 'Save',
+    overdue: language === 'nl' ? 'te laat · ' : 'overdue · ',
   }
 
   const PRIORITY_ORDER: Record<Priority, number> = { high: 0, medium: 1, low: 2 }
@@ -113,8 +138,8 @@ export default function TodoPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="page-title">📋 Todo</h1>
-        <p className="page-subtitle">Track your dev tasks & ideas</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="page-subtitle">{copy.subtitle}</p>
       </div>
 
       {/* Stats */}
@@ -122,7 +147,7 @@ export default function TodoPage() {
         {(['total', 'open', 'done'] as const).map(k => (
           <div key={k} className="card text-center">
             <p className="text-2xl font-bold text-white">{counts[k]}</p>
-            <p className="text-xs text-slate-500 mt-0.5 capitalize">{k}</p>
+            <p className="text-xs text-slate-500 mt-0.5 capitalize">{copy[k]}</p>
           </div>
         ))}
       </div>
@@ -131,7 +156,7 @@ export default function TodoPage() {
       {counts.total > 0 && (
         <div className="mb-6">
           <div className="flex justify-between text-[10px] text-slate-600 mb-1">
-            <span>Progress</span>
+            <span>{copy.progress}</span>
             <span>{Math.round((counts.done / counts.total) * 100)}%</span>
           </div>
           <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -147,7 +172,7 @@ export default function TodoPage() {
       <div className="card mb-4 space-y-3">
         <input
           className="input"
-          placeholder="New dev task…"
+          placeholder={copy.placeholder}
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()}
@@ -160,9 +185,9 @@ export default function TodoPage() {
               onChange={e => setPriority(e.target.value as Priority)}
               className="input pr-7 py-1 w-auto text-xs appearance-none cursor-pointer"
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">{copy.low}</option>
+              <option value="medium">{copy.medium}</option>
+              <option value="high">{copy.high}</option>
             </select>
             <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           </div>
@@ -183,10 +208,10 @@ export default function TodoPage() {
             className="input py-1 text-xs w-auto cursor-pointer"
             value={dueDate}
             onChange={e => setDueDate(e.target.value)}
-            title="Due date (optional)"
+            title={copy.dueDate}
           />
           <button onClick={add} className="btn-primary ml-auto">
-            <Plus size={14} /> Add Task
+            <Plus size={14} /> {copy.addTask}
           </button>
         </div>
       </div>
@@ -209,22 +234,22 @@ export default function TodoPage() {
           <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
           <input
             className="input !pl-7 py-1 text-xs"
-            placeholder="Search tasks…"
+            placeholder={copy.search}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <div className="relative">
           <select className="input text-xs appearance-none pr-6 cursor-pointer py-1" value={sortBy} onChange={e => setSortBy(e.target.value as 'newest' | 'priority' | 'due')}>
-            <option value="newest">Newest</option>
-            <option value="priority">Priority</option>
-            <option value="due">Due date</option>
+            <option value="newest">{copy.newest}</option>
+            <option value="priority">{copy.priority}</option>
+            <option value="due">{copy.due}</option>
           </select>
           <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
         </div>
         {counts.done > 0 && (
           <button onClick={clearDone} className="btn-ghost text-xs gap-1.5 text-slate-500 hover:text-red-400">
-            <CheckCheck size={12} /> Clear done
+            <CheckCheck size={12} /> {copy.clearDone}
           </button>
         )}
       </div>
@@ -234,7 +259,7 @@ export default function TodoPage() {
         {filtered.length === 0 && (
           <div className="card text-center py-10 text-slate-600">
             <p className="text-4xl mb-2">✓</p>
-            <p className="text-sm">No tasks here</p>
+            <p className="text-sm">{copy.noTasks}</p>
           </div>
         )}
         {filtered.map(todo => (
@@ -260,7 +285,7 @@ export default function TodoPage() {
                     onChange={e => setEditText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') commitEdit(todo.id); if (e.key === 'Escape') setEditingId(null) }}
                   />
-                  <button onClick={() => commitEdit(todo.id)} className="btn-primary py-0.5 px-2 text-xs">Save</button>
+                  <button onClick={() => commitEdit(todo.id)} className="btn-primary py-0.5 px-2 text-xs">{copy.save}</button>
                   <button onClick={() => setEditingId(null)} className="btn-ghost py-0.5 px-1.5"><X size={11} /></button>
                 </div>
               ) : (
@@ -282,12 +307,12 @@ export default function TodoPage() {
                       ? 'text-red-400 bg-red-400/10 border-red-400/20'
                       : 'text-slate-500 bg-slate-700/30 border-slate-700'
                   }`}>
-                    {isOverdue(todo) ? '⚠ overdue · ' : '📅 '}
-                    {new Date(todo.dueDate).toLocaleDateString()}
+                    {isOverdue(todo) ? `⚠ ${copy.overdue}` : '📅 '}
+                    {new Date(todo.dueDate).toLocaleDateString(locale)}
                   </span>
                 )}
                 <span className="text-[10px] text-slate-600 ml-auto">
-                  {new Date(todo.createdAt).toLocaleDateString()}
+                  {new Date(todo.createdAt).toLocaleDateString(locale)}
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Users, Star, GitFork, Code2, ExternalLink, RotateCcw, BookOpen, AlertCircle, X, GitCommit, Globe, Calendar, ChevronLeft, Folder, FolderOpen, FileCode, FileText, FileImage, File, ChevronRight } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import toast from 'react-hot-toast'
@@ -83,6 +84,7 @@ const LANG_HEX: Record<string, string> = {
 const DEFAULT_USER = 'OdinWattz'
 
 export default function GitHubPage() {
+  const { language } = useLanguage()
   const [username, setUsername]         = useState(DEFAULT_USER)
   const [user, setUser]                 = useState<GitHubUser | null>(null)
   const [repos, setRepos]               = useState<GitHubRepo[]>([])
@@ -107,7 +109,7 @@ export default function GitHubPage() {
       ])
 
       if (!uRes.ok) {
-        setError(uRes.status === 404 ? 'User not found' : `GitHub API error: ${uRes.status}`)
+        setError(uRes.status === 404 ? (language === 'nl' ? 'Gebruiker niet gevonden' : 'User not found') : `GitHub API error: ${uRes.status}`)
         return
       }
 
@@ -115,12 +117,12 @@ export default function GitHubPage() {
       setUser(userData)
       setRepos(Array.isArray(repoData) ? repoData : [])
     } catch {
-      setError('Network error — check your connection')
-      toast.error('Failed to fetch GitHub data')
+      setError(language === 'nl' ? 'Netwerkfout — controleer je verbinding' : 'Network error — check your connection')
+      toast.error(language === 'nl' ? 'GitHub-data ophalen mislukt' : 'Failed to fetch GitHub data')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [language])
 
   useEffect(() => { fetchUser(DEFAULT_USER) }, [fetchUser])
 
@@ -140,7 +142,7 @@ export default function GitHubPage() {
       ])
       setSelectedRepo({ ...repo, languages, commits: Array.isArray(commits) ? commits : [], contributors: Array.isArray(contributors) ? contributors : [] })
     } catch {
-      toast.error('Failed to load repo details')
+      toast.error(language === 'nl' ? 'Repo-details laden mislukt' : 'Failed to load repo details')
     } finally {
       setRepoLoading(false)
     }
@@ -153,12 +155,20 @@ export default function GitHubPage() {
   })
 
   const QUICK_USERS = ['torvalds', 'gaearon', 'sindresorhus', 'tj', 'yyx990803']
+  const copy = {
+    title: language === 'nl' ? '🐙 GitHub Statistieken' : '🐙 GitHub Stats',
+    subtitle: language === 'nl' ? 'Verken elk GitHub-profiel en repositories' : 'Explore any GitHub profile & repositories',
+    search: language === 'nl' ? 'Zoek' : 'Search',
+    quick: language === 'nl' ? 'Snel:' : 'Quick:',
+    loading: language === 'nl' ? 'Laden…' : 'Loading…',
+    loadingDetails: language === 'nl' ? 'Repo-details laden…' : 'Loading repo details…',
+  }
 
   return (
     <div className="max-w-5xl">
       <div className="mb-6">
-        <h1 className="page-title">🐙 GitHub Stats</h1>
-        <p className="page-subtitle">Explore any GitHub profile & repositories</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="page-subtitle">{copy.subtitle}</p>
       </div>
 
       {/* Search */}
@@ -176,11 +186,11 @@ export default function GitHubPage() {
           </div>
           <button onClick={() => fetchUser(username)} disabled={loading} className="btn-primary">
             {loading ? <RotateCcw size={14} className="animate-spin" /> : <Search size={14} />}
-            Search
+            {copy.search}
           </button>
         </div>
         <div className="flex items-center gap-2 mt-3 flex-wrap">
-          <span className="text-xs text-slate-600">Quick:</span>
+          <span className="text-xs text-slate-600">{copy.quick}</span>
           {QUICK_USERS.map(u => (
             <button key={u} onClick={() => { setUsername(u); fetchUser(u) }}
               className="text-xs text-slate-500 hover:text-cyan-400 transition-colors">
@@ -287,7 +297,7 @@ export default function GitHubPage() {
             <div className="lg:col-span-2">
               {repoLoading ? (
                 <div className="card flex items-center justify-center py-20 text-slate-600">
-                  <RotateCcw size={20} className="animate-spin mr-2" /> Loading repo details…
+                  <RotateCcw size={20} className="animate-spin mr-2" /> {copy.loadingDetails}
                 </div>
               ) : selectedRepo ? (
                 <RepoDetailPanel repo={selectedRepo} onClose={() => setSelectedRepo(null)} />
@@ -300,7 +310,7 @@ export default function GitHubPage() {
       {!user && !loading && !error && (
         <div className="card text-center py-16 text-slate-700">
           <p className="text-5xl mb-3">🐙</p>
-          <p className="text-sm">Laden…</p>
+          <p className="text-sm">{copy.loading}</p>
         </div>
       )}
     </div>

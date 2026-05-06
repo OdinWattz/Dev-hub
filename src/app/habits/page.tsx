@@ -5,6 +5,7 @@ import {
   Flame, RotateCcw, Shield, Zap, Trophy, Heart, Wind,
   ChevronDown, ChevronUp, X, Plus, CheckCircle2, AlertCircle,
 } from 'lucide-react'
+import { useLanguage } from '@/components/LanguageProvider'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ function saveData(d: HabitData) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function HabitsPage() {
+  const { language, locale } = useLanguage()
   const [data, setData] = useState<HabitData>(loadData)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [quote, setQuote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
@@ -113,7 +115,7 @@ export default function HabitsPage() {
             clearInterval(urgeRef.current!)
             setUrgeRunning(false)
             setUrgeDone(true)
-            toast.success('You made it through! 💪 The urge has passed.', { duration: 6000 })
+            toast.success(language === 'nl' ? 'Je hebt het gehaald! 💪 De drang is voorbij.' : 'You made it through! 💪 The urge has passed.', { duration: 6000 })
             return 0
           }
           return prev - 1
@@ -123,14 +125,14 @@ export default function HabitsPage() {
       if (urgeRef.current) clearInterval(urgeRef.current)
     }
     return () => { if (urgeRef.current) clearInterval(urgeRef.current) }
-  }, [urgeRunning])
+  }, [urgeRunning, language])
 
   const startStreak = useCallback(() => {
     const next = { ...data, startDate: today() }
     setData(next)
     saveData(next)
-    toast.success('Streak started — Day 1 begins today! 🌱')
-  }, [data])
+    toast.success(language === 'nl' ? 'Reeks gestart — dag 1 begint vandaag! 🌱' : 'Streak started — Day 1 begins today! 🌱')
+  }, [data, language])
 
   const resetStreak = useCallback(() => {
     const next: HabitData = {
@@ -141,19 +143,50 @@ export default function HabitsPage() {
     setData(next)
     saveData(next)
     setShowResetConfirm(false)
-    toast('Reset logged. Day 1 again — you got this.', { icon: '💪' })
-  }, [data])
+    toast(language === 'nl' ? 'Reset gelogd. Dag 1 opnieuw — je kunt dit.' : 'Reset logged. Day 1 again — you got this.', { icon: '💪' })
+  }, [data, language])
 
   const submitCheckin = useCallback(() => {
-    if (todayCheckin) { toast.error('Already checked in today'); return }
+    if (todayCheckin) { toast.error(language === 'nl' ? 'Vandaag al ingecheckt' : 'Already checked in today'); return }
     const entry: CheckIn = { date: today(), mood: checkinMood, note: checkinNote.trim() }
     const next = { ...data, checkins: [entry, ...data.checkins].slice(0, 90) }
     setData(next)
     saveData(next)
     setShowCheckin(false)
     setCheckinNote('')
-    toast.success('Check-in saved ✓')
-  }, [data, checkinMood, checkinNote, todayCheckin])
+    toast.success(language === 'nl' ? 'Check-in opgeslagen ✓' : 'Check-in saved ✓')
+  }, [data, checkinMood, checkinNote, todayCheckin, language])
+
+  const copy = {
+    title: language === 'nl' ? 'Gewoonte Tracker' : 'Habit Tracker',
+    subtitle: language === 'nl' ? 'Bouw reeksen op, volg voortgang en doorbreek de cyclus' : 'Build streaks, track progress, break the cycle',
+    dayStreak: language === 'nl' ? 'dag streak' : 'day streak',
+    daysStreak: language === 'nl' ? 'dagen streak' : 'days streak',
+    until: language === 'nl' ? 'tot' : 'until',
+    start: language === 'nl' ? 'Start' : 'Start',
+    startStreak: language === 'nl' ? 'Start reeks' : 'Start Streak',
+    logReset: language === 'nl' ? 'Reset loggen' : 'Log Reset',
+    confirmReset: language === 'nl' ? 'Reset loggen en opnieuw beginnen?' : 'Log a reset and start over?',
+    confirm: language === 'nl' ? 'Bevestigen' : 'Confirm',
+    cancel: language === 'nl' ? 'Annuleren' : 'Cancel',
+    resetsLogged: language === 'nl' ? 'resets gelogd' : 'resets logged',
+    clickNewQuote: language === 'nl' ? 'Klik voor nieuwe quote' : 'Click for new quote',
+    urgeSurfer: language === 'nl' ? 'Urge Surfer' : 'Urge Surfer',
+    urgeHelp: language === 'nl' ? 'wacht het uit, drang gaat in minuten voorbij' : 'wait it out, urges pass in minutes',
+    dailyCheckin: language === 'nl' ? 'Dagelijkse Check-in' : 'Daily Check-in',
+    doneToday: language === 'nl' ? '✓ Vandaag gedaan' : '✓ Done today',
+    feeling: language === 'nl' ? 'Hoe voel je je vandaag?' : 'How are you feeling today?',
+    notePlaceholder: language === 'nl' ? 'Optionele notitie — hoe ging vandaag? (privé)' : 'Optional note — how was today? (private)',
+    save: language === 'nl' ? 'Opslaan' : 'Save',
+    checkInNow: language === 'nl' ? 'Nu inchecken' : 'Check in now',
+    toolkit: language === 'nl' ? 'Nood Toolkit' : 'Emergency Toolkit',
+    toolkitDesc: language === 'nl' ? 'dingen om nu te doen' : 'things to do right now',
+    milestones: language === 'nl' ? 'Mijlpalen' : 'Milestones',
+    history: language === 'nl' ? 'Check-in geschiedenis' : 'Check-in History',
+    entries: language === 'nl' ? 'items' : 'entries',
+    resetLog: language === 'nl' ? 'Reset log' : 'Reset Log',
+    resetLogDesc: language === 'nl' ? 'elke reset is data, geen falen' : 'every reset is data, not failure',
+  }
 
   const startUrge = (minutes: number) => {
     const secs = minutes * 60
@@ -173,8 +206,8 @@ export default function HabitsPage() {
   return (
     <div className="max-w-2xl space-y-5">
       <div className="mb-2">
-        <h1 className="page-title">Habit Tracker</h1>
-        <p className="page-subtitle">Build streaks, track progress, break the cycle</p>
+        <h1 className="page-title">{copy.title}</h1>
+        <p className="page-subtitle">{copy.subtitle}</p>
       </div>
 
       {/* ── Streak card ── */}
@@ -186,7 +219,7 @@ export default function HabitsPage() {
             </div>
             <div>
               <p className="text-3xl font-bold text-white">{streakDays}</p>
-              <p className="text-xs text-slate-500">{streakDays === 1 ? 'day streak' : 'days streak'}</p>
+              <p className="text-xs text-slate-500">{streakDays === 1 ? copy.dayStreak : copy.daysStreak}</p>
             </div>
           </div>
           <div className="text-right">
@@ -195,7 +228,7 @@ export default function HabitsPage() {
             )}
             {nextMilestone && (
               <p className="text-[10px] text-slate-500">
-                {nextMilestone.days - streakDays}d until {nextMilestone.label}
+                {nextMilestone.days - streakDays}d {copy.until} {nextMilestone.label}
               </p>
             )}
           </div>
@@ -205,7 +238,7 @@ export default function HabitsPage() {
         {nextMilestone && (
           <div className="mt-4">
             <div className="flex justify-between text-[10px] text-slate-600 mb-1">
-              <span>{lastAchieved?.label ?? 'Start'}</span>
+              <span>{lastAchieved?.label ?? copy.start}</span>
               <span>{nextMilestone.label}</span>
             </div>
             <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -220,7 +253,7 @@ export default function HabitsPage() {
         <div className="flex gap-2 mt-4">
           {!data.startDate ? (
             <button onClick={startStreak} className="btn-primary flex items-center gap-1.5">
-              <Plus size={13} /> Start Streak
+              <Plus size={13} /> {copy.startStreak}
             </button>
           ) : (
             <>
@@ -229,20 +262,20 @@ export default function HabitsPage() {
                   onClick={() => setShowResetConfirm(true)}
                   className="btn-ghost text-xs flex items-center gap-1.5 text-slate-500"
                 >
-                  <RotateCcw size={11} /> Log Reset
+                  <RotateCcw size={11} /> {copy.logReset}
                 </button>
               ) : (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs text-slate-400">Log a reset and start over?</p>
-                  <button onClick={resetStreak} className="text-xs px-3 py-1 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30 transition-all">Confirm</button>
-                  <button onClick={() => setShowResetConfirm(false)} className="btn-ghost text-xs px-2 py-1">Cancel</button>
+                  <p className="text-xs text-slate-400">{copy.confirmReset}</p>
+                  <button onClick={resetStreak} className="text-xs px-3 py-1 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30 transition-all">{copy.confirm}</button>
+                  <button onClick={() => setShowResetConfirm(false)} className="btn-ghost text-xs px-2 py-1">{copy.cancel}</button>
                 </div>
               )}
             </>
           )}
           {data.resets.length > 0 && (
             <span className="text-[10px] text-slate-600 self-center ml-auto">
-              {data.resets.length} reset{data.resets.length > 1 ? 's' : ''} logged
+              {data.resets.length} {copy.resetsLogged}
             </span>
           )}
         </div>
@@ -255,15 +288,15 @@ export default function HabitsPage() {
         title="Click for a new quote"
       >
         <p className="text-sm text-slate-400 italic leading-relaxed">&ldquo;{quote}&rdquo;</p>
-        <p className="text-[10px] text-slate-700 mt-2">Click for new quote</p>
+        <p className="text-[10px] text-slate-700 mt-2">{copy.clickNewQuote}</p>
       </div>
 
       {/* ── Urge Surfer ── */}
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <Wind size={14} className="text-sky-400" />
-          <p className="section-label">Urge Surfer</p>
-          <span className="text-[10px] text-slate-600 ml-1">— wait it out, urges pass in minutes</span>
+          <p className="section-label">{copy.urgeSurfer}</p>
+          <span className="text-[10px] text-slate-600 ml-1">— {copy.urgeHelp}</span>
         </div>
         <div className="flex items-center gap-6">
           {/* Mini ring */}
@@ -325,8 +358,8 @@ export default function HabitsPage() {
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <Heart size={14} className="text-rose-400" />
-          <p className="section-label">Daily Check-in</p>
-          {todayCheckin && <span className="text-[10px] text-green-400 ml-auto">✓ Done today</span>}
+          <p className="section-label">{copy.dailyCheckin}</p>
+          {todayCheckin && <span className="text-[10px] text-green-400 ml-auto">{copy.doneToday}</span>}
         </div>
         {todayCheckin ? (
           <div className="flex items-center gap-3">
@@ -336,7 +369,7 @@ export default function HabitsPage() {
         ) : showCheckin ? (
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-slate-500 mb-2">How are you feeling today?</p>
+              <p className="text-xs text-slate-500 mb-2">{copy.feeling}</p>
               <div className="flex gap-3">
                 {MOODS.map((m, i) => (
                   <button
@@ -352,18 +385,18 @@ export default function HabitsPage() {
             <textarea
               className="input w-full text-xs resize-none"
               rows={2}
-              placeholder="Optional note — how was today? (private)"
+              placeholder={copy.notePlaceholder}
               value={checkinNote}
               onChange={e => setCheckinNote(e.target.value)}
             />
             <div className="flex gap-2">
-              <button onClick={submitCheckin} className="btn-primary text-xs">Save</button>
-              <button onClick={() => setShowCheckin(false)} className="btn-ghost text-xs">Cancel</button>
+              <button onClick={submitCheckin} className="btn-primary text-xs">{copy.save}</button>
+              <button onClick={() => setShowCheckin(false)} className="btn-ghost text-xs">{copy.cancel}</button>
             </div>
           </div>
         ) : (
           <button onClick={() => setShowCheckin(true)} className="btn-ghost text-xs flex items-center gap-1.5">
-            <Plus size={11} /> Check in now
+            <Plus size={11} /> {copy.checkInNow}
           </button>
         )}
       </div>
@@ -376,8 +409,8 @@ export default function HabitsPage() {
         >
           <div className="flex items-center gap-2">
             <Shield size={14} className="text-purple-400" />
-            <p className="section-label">Emergency Toolkit</p>
-            <span className="text-[10px] text-slate-600 ml-1">— things to do right now</span>
+            <p className="section-label">{copy.toolkit}</p>
+            <span className="text-[10px] text-slate-600 ml-1">— {copy.toolkitDesc}</span>
           </div>
           {showToolkit ? <ChevronUp size={13} className="text-slate-600" /> : <ChevronDown size={13} className="text-slate-600" />}
         </button>
@@ -397,7 +430,7 @@ export default function HabitsPage() {
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <Trophy size={14} className="text-yellow-400" />
-          <p className="section-label">Milestones</p>
+          <p className="section-label">{copy.milestones}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {MILESTONES.map(m => {
@@ -428,10 +461,10 @@ export default function HabitsPage() {
           >
             <div className="flex items-center gap-2">
               <Zap size={14} className="text-cyan-400" />
-              <p className="section-label">Check-in History</p>
+              <p className="section-label">{copy.history}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-600">{data.checkins.length} entries</span>
+              <span className="text-[10px] text-slate-600">{data.checkins.length} {copy.entries}</span>
               {showHistory ? <ChevronUp size={13} className="text-slate-600" /> : <ChevronDown size={13} className="text-slate-600" />}
             </div>
           </button>
@@ -439,7 +472,7 @@ export default function HabitsPage() {
             <div className="mt-3 space-y-1.5">
               {data.checkins.slice(0, 14).map(c => (
                 <div key={c.date} className="flex items-center gap-3 py-1.5 border-b border-slate-800 last:border-0">
-                  <span className="text-xs text-slate-600 w-24 shrink-0">{new Date(c.date + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  <span className="text-xs text-slate-600 w-24 shrink-0">{new Date(c.date + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                   <span className="text-base">{MOODS[c.mood]}</span>
                   {c.note && <span className="text-xs text-slate-500 italic truncate">&ldquo;{c.note}&rdquo;</span>}
                 </div>
@@ -454,8 +487,8 @@ export default function HabitsPage() {
         <div className="card">
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle size={14} className="text-slate-500" />
-            <p className="section-label">Reset Log</p>
-            <span className="text-[10px] text-slate-700 ml-1">— every reset is data, not failure</span>
+            <p className="section-label">{copy.resetLog}</p>
+            <span className="text-[10px] text-slate-700 ml-1">— {copy.resetLogDesc}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {[...data.resets].reverse().map((d, i) => (
