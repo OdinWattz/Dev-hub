@@ -1,0 +1,11 @@
+{
+  "files.exclude": {
+    "**/desktop/dist": true,
+    "**/desktop/web": true
+  },
+  "search.exclude": {
+    "**/desktop/dist": true,
+    "**/desktop/web": true
+  },
+  "html.validate.scripts": false
+}

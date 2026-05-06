@@ -1,0 +1,65 @@
+{
+  "name": "dev-hub-desktop",
+  "version": "1.0.0",
+  "author": "OdinWattz",
+  "description": "DevHub — Developer Toolkit (Desktop)",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:installer": "electron-builder --win --config.win.target=nsis",
+    "build:portable": "electron-builder --win --config.win.target=portable"
+  },
+  "build": {
+    "appId": "com.odinw.devhub.desktop",
+    "productName": "DevHub",
+    "copyright": "Copyright © 2026 OdinWattz",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "web/**",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+        "shortcutName": "DevHub",
+        "allowElevation": false
+    },
+    "portable": {
+      "artifactName": "DevHub-portable.exe"
+    }
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1"
+  },
+  "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}

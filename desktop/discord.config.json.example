@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this file to discord.config.json and fill in your App ID.",
+  "_instructions": [
+    "1. Go to https://discord.com/developers/applications",
+    "2. Create a new application — name it 'DevHub'",
+    "3. Copy the Application ID and paste it below",
+    "4. Open the 'Rich Presence' tab and upload an art asset named 'devhub_icon'"
+  ],
+  "appId": "YOUR_DISCORD_APPLICATION_ID"
+}
