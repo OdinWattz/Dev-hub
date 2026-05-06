@@ -57,6 +57,9 @@ type TreeItem = {
   download_url: string | null
 }
 
+const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','svg','ico'])
+const hasImageExt = (name: string) => IMAGE_EXTS.has(name.split('.').pop()?.toLowerCase() ?? '')
+
 const LANG_COLORS: Record<string, string> = {
   TypeScript:  'text-blue-400   bg-blue-400/10',
   JavaScript:  'text-yellow-400 bg-yellow-400/10',
@@ -436,7 +439,7 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
   const [pathStack, setPathStack]   = useState<string[]>([])
   const [items, setItems]           = useState<TreeItem[] | null>(null)
   const [treeLoading, setTreeLoading] = useState(false)
-  const [openFile, setOpenFile]     = useState<{ name: string; content: string; lang: string; url: string } | null>(null)
+  const [openFile, setOpenFile]     = useState<{ name: string; content: string; lang: string; url: string; base64?: string } | null>(null)
   const [fileLoading, setFileLoading] = useState(false)
   const [expanded, setExpanded]     = useState(false)
   const [showMarkdownCode, setShowMarkdownCode] = useState(false)
@@ -470,11 +473,16 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
       if (!res.ok) { toast.error('Could not load file'); setFileLoading(false); return }
       const data = await res.json()
       if (data.encoding === 'base64' && data.content) {
-        const raw = atob(data.content.replace(/\n/g, ''))
+        const cleanedBase64 = data.content.replace(/\n/g, '')
         const ext = item.name.split('.').pop()?.toLowerCase() ?? ''
         const lang = EXT_LANG[ext] ?? ext
         setShowMarkdownCode(false)
-        setOpenFile({ name: item.name, content: raw, lang, url: item.html_url })
+        if (hasImageExt(item.name)) {
+          setOpenFile({ name: item.name, content: '', base64: cleanedBase64, lang, url: item.html_url })
+        } else {
+          const raw = decodeBase64Utf8(cleanedBase64)
+          setOpenFile({ name: item.name, content: raw, lang, url: item.html_url })
+        }
       } else {
         // Too large or binary — open on GitHub
         window.open(item.html_url, '_blank')
@@ -499,8 +507,12 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
     setOpenFile(null)
   }
 
-  const IMAGE_EXTS = new Set(['png','jpg','jpeg','gif','webp','svg','ico'])
-  const isImage = (name: string) => IMAGE_EXTS.has(name.split('.').pop()?.toLowerCase() ?? '')
+  const isImage = (name: string) => hasImageExt(name)
+  const decodeBase64Utf8 = (base64: string) => {
+    const binary = atob(base64)
+    const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0))
+    return new TextDecoder('utf-8').decode(bytes)
+  }
   const isMarkdown = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase() ?? ''
     return ext === 'md' || ext === 'mdx'
@@ -605,7 +617,7 @@ function FileBrowser({ fullName, defaultBranch }: { fullName: string; defaultBra
           </div>
           {isImage(openFile.name) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={`data:image/*;base64,${btoa(openFile.content)}`} alt={openFile.name} className="max-w-full block mx-auto p-4" />
+            <img src={`data:image/*;base64,${openFile.base64 ?? ''}`} alt={openFile.name} className="max-w-full block mx-auto p-4" />
           ) : isMarkdown(openFile.name) && !showMarkdownCode ? (
             <div className="max-h-[480px] overflow-auto px-4 py-3 text-[13px] leading-relaxed text-slate-300">
               <div
